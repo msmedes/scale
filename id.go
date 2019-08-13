@@ -1,16 +1,27 @@
 package scale
 
-import "math/big"
+import (
+	"fmt"
+
+	"crypto/sha1"
+)
 
 /*
 Some utility functions to help out with id hashes
 */
 
-func hash
+func generateHash(key string) []byte {
+	h := sha1.New()
+	h.Write([]byte(key))
+	checksum := h.Sum(nil)
+	fmt.Printf("%v\n", len(checksum))
+	return checksum
 
-func IDToString(id []byte) string {
-	key := big.Int{}
-	key.SetBytes(id)
-
-	return key.String()
 }
+
+// for debugging purposes
+func IDToString(id []byte) string {
+	return fmt.Sprintf("%x\n", id)
+}
+
+// we might need to pad ids since the lengths could be different

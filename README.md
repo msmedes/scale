@@ -6,4 +6,5 @@
 
 [another repo](https://github.com/r-medina/gmaj)
 
-# scale
+[Lecture on chord](https://www.youtube.com/watch?v=q29szpcnorA)
+
