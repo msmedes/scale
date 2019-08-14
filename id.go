@@ -15,7 +15,8 @@ func generateHash(key string) []byte {
 	h.Write([]byte(key))
 	checksum := h.Sum(nil)
 	fmt.Printf("%v\n", len(checksum))
-	return checksum
+	// hardcoded len at the moment, will eventually be passed by config.KeySize
+	return checksum[:32]
 
 }
 

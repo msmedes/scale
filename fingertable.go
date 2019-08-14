@@ -19,21 +19,19 @@ sha1)
 type FingerTable []*finger
 
 type finger struct {
-	ID   []byte
-	Node *Node
+	ID         []byte
+	RemoteNode *Node
 }
 
 func (f *finger) String() string {
 	var buf bytes.Buffer
 
-	buf.WriteString(fmt.Sprintf("id: %v node: %v", f.ID, f.Node.ID))
+	buf.WriteString(fmt.Sprintf("id: %v node: %v", f.ID, f.RemoteNode.ID))
 
 	return buf.String()
 }
 
 func newFingerTable(n *Node, m int) FingerTable {
-	// TODO: A few finger table should take a node and an integer m
-	// and construct a new finger table of fingers length m.
 	fingerTable := make([]*finger, 8)
 	for i := range fingerTable {
 		fingerTable[i] = newFinger(fingerMath(n.ID, i, 8), n)
@@ -44,7 +42,9 @@ func newFingerTable(n *Node, m int) FingerTable {
 // calculates the offset for the finger table through (n + 2^i) mod (2 ^ m)
 func fingerMath(n []byte, i int, m int) []byte {
 	twoExp := big.NewInt(2)
-	twoExp.Exp(twoExp, big.NewInt(int64(i)), nil) // 8 is just a placeholder for the accuracy, eventually will be passed by config
+	// nil is for "accuracy", for some reason before it was giving me zeros
+	// instead of big ints, not great for doing math
+	twoExp.Exp(twoExp, big.NewInt(int64(i)), nil)
 	mExp := big.NewInt(2)
 	mExp.Exp(mExp, big.NewInt(int64(m)), nil)
 
@@ -56,9 +56,23 @@ func fingerMath(n []byte, i int, m int) []byte {
 	return res.Bytes()
 }
 
-func newFinger(id []byte, n *Node) *finger {
+func (n *Node) fixFingerTable() {
+	/*
+		for i in range m (the key size):
+			 use fingerMath to calculate where we should look next
+			 use an RPC call to find the Successor of this node based on that hash
+			 create a new finger pointing to the Successor node
+			 Lock the fingertables mutex (idk can we use channels for this? it
+			 could theoretically block? like each index listens on a channel? idk
+			 that might be a lot when we could just lock and unlock)
+			 update the finger table at i
+			 unlock
+	*/
+}
+
+func newFinger(id []byte, remoteNode *Node) *finger {
 	return &finger{
-		ID:   id,
-		Node: n,
+		ID:         id,
+		RemoteNode: remoteNode,
 	}
 }
