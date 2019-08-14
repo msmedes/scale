@@ -12,7 +12,7 @@
 ### IDs
 
 Using `[]byte` to represent ids for a few reasons:
-  - can easily be truncated or padded, since `sha1` doesn't return a checksum of the same length for every input, apparently.  Chord uses a key of a fixed byte length (I think 32) which gives you a 2<sup>32</sup> possible keys, I think?
+  - can easily be truncated or padded, since `sha1` doesn't return a checksum of the same length for every input, apparently.  Chord uses a key of a fixed bit length (I think 32) which gives you a 2<sup>32</sup> possible keys, I think? In the video linked above they mention using a 160 bit sha hash but I don't think go does that and I'm not writing a custom hashing library for that shit.  As far as I know it returns either 32 or 64 bit int as a byte array.
   - can be converted to a `big.Int` `struct` or `interface` so the finger table math can be done to it easily since the integers involved will likely get huge. 
   - Idk it's what everyone else did so seemed like a good idea.
 
