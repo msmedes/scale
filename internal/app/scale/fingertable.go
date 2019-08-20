@@ -58,15 +58,15 @@ func fingerMath(n []byte, i int, m int) []byte {
 
 func (n *Node) fixFingerTable() {
 	/*
-		for i in range m (the key size):
-			 use fingerMath to calculate where we should look next
-			 use an RPC call to find the Successor of this node based on that hash
-			 create a new finger pointing to the Successor node
-			 Lock the fingertables mutex (idk can we use channels for this? it
-			 could theoretically block? like each index listens on a channel? idk
-			 that might be a lot when we could just lock and unlock)
-			 update the finger table at i
-			 unlock
+	  for i in range m (the key size):
+	  use fingerMath to calculate where we should look next
+	  use an RPC call to find the Successor of this node based on that hash
+	  create a new finger pointing to the Successor node
+	  Lock the fingertables mutex (idk can we use channels for this? it
+	  could theoretically block? like each index listens on a channel? idk
+	  that might be a lot when we could just lock and unlock)
+	  update the finger table at i
+	  unlock
 	*/
 }
 

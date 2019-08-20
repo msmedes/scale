@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package scale;
+
+message RemoteId {
+}
+
+message UpdateReq {
+}
+
+message RemoteQuery {
+}
+
+message RemoteNode {
+}
+
+message RpcOkay {
+}
+
+message IdReply {
+}
+
+service Scale {
+  rpc GetSuccessorId (RemoteId) returns (IdReply) {}
+  rpc SetPredecessorId (UpdateReq) returns (RpcOkay) {}
+  rpc SetSuccessorId (UpdateReq) returns (RpcOkay) {}
+  rpc FindSuccessor (RemoteQuery) returns (IdReply) {}
+  rpc Notify (RemoteNode) returns (RpcOkay) {}
+  rpc ClosestPrecedingFinger (RemoteQuery) returns (IdReply) {}
+}
