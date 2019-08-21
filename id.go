@@ -26,3 +26,19 @@ func IDToString(id []byte) string {
 }
 
 // we might need to pad ids since the lengths could be different
+
+func idLessThan(a, b []byte) bool {
+
+}
+
+func idGreaterThan(a, b []byte) bool {
+
+}
+
+func idBetween(n, a, b []byte) bool {
+
+}
+
+func idEqualTo(a, b []byte) bool {
+
+}
