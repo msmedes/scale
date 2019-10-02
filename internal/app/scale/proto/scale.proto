@@ -3,6 +3,7 @@ syntax = "proto3";
 package scale;
 
 message RemoteId {
+  string id = 1;
 }
 
 message UpdateReq {
@@ -18,6 +19,7 @@ message RpcOkay {
 }
 
 message IdReply {
+  string id = 1;
 }
 
 service Scale {

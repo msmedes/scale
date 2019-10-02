@@ -1,28 +1,26 @@
 package scale
 
 import (
-	"fmt"
-
 	"crypto/sha1"
+	"fmt"
 )
 
-/*
-Some utility functions to help out with id hashes
-*/
+const M = 160
 
-func generateHash(key string) []byte {
+type Key = [M / 8]byte
+
+func GenerateKey(str string) Key {
 	h := sha1.New()
-	h.Write([]byte(key))
-	checksum := h.Sum(nil)
-	fmt.Printf("%v\n", len(checksum))
-	// hardcoded len at the moment, will eventually be passed by config.KeySize
-	return checksum[:32]
-
+	h.Write([]byte(str))
+	return ByteArrayToKey(h.Sum(nil))
 }
 
-// for debugging purposes
-func IDToString(id []byte) string {
-	return fmt.Sprintf("%x\n", id)
+func ByteArrayToKey(arr []byte) Key {
+	var key Key
+	copy(key[:], arr)
+	return key
 }
 
-// we might need to pad ids since the lengths could be different
+func IdToString(id Key) string {
+	return fmt.Sprintf("%x", id)
+}
