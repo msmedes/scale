@@ -1,44 +1,50 @@
 package scale
 
 import (
-	"fmt"
-
+	"bytes"
 	"crypto/sha1"
+	"fmt"
 )
 
-/*
-Some utility functions to help out with id hashes
-*/
+const M = 160
 
-func generateHash(key string) []byte {
+type Key = [M / 8]byte
+
+func GenerateKey(str string) Key {
 	h := sha1.New()
-	h.Write([]byte(key))
-	checksum := h.Sum(nil)
-	fmt.Printf("%v\n", len(checksum))
-	// hardcoded len at the moment, will eventually be passed by config.KeySize
-	return checksum[:32]
-
+	h.Write([]byte(str))
+	return ByteArrayToKey(h.Sum(nil))
 }
 
-// for debugging purposes
-func IDToString(id []byte) string {
-	return fmt.Sprintf("%x\n", id)
+func ByteArrayToKey(arr []byte) Key {
+	var key Key
+	copy(key[:], arr)
+	return key
 }
 
-// we might need to pad ids since the lengths could be different
-
-func idLessThan(a, b []byte) bool {
-
+func IdToString(id Key) string {
+	return fmt.Sprintf("%x", id)
 }
 
-func idGreaterThan(a, b []byte) bool {
+func between(x, a, b Key) bool {
+	// return bytes.Compare(a[:], x[:]) == -1 && bytes.Compare(x[:], b[:]) == -1
+	aSlice := a[:]
+	bSlice := b[:]
+	xSlice := x[:]
 
+	switch bytes.Compare(aSlice, bSlice) {
+	case -1:
+		return bytes.Compare(aSlice, xSlice) == -1 && bytes.Compare(xSlice, bSlice) == -1
+	case 1:
+		return bytes.Compare(xSlice, aSlice) == -1 || bytes.Compare(xSlice, bSlice) == -1
+	case 0:
+		return bytes.Compare(xSlice, aSlice) != 0
+	}
+
+	return false
 }
 
-func idBetween(n, a, b []byte) bool {
+func betweenRightInclusive(x, a, b Key) bool {
 
-}
-
-func idEqualTo(a, b []byte) bool {
-
+	return between(x, a, b) || bytes.Equal(x[:], b[:])
 }

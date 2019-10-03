@@ -15,14 +15,20 @@ func ServerListen() {
 	port := flag.Int("port", 3000, "port for grpc server")
 	flag.Parse()
 
-	server, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", *port))
+	server, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	log.Printf("listening on: 0.0.0.0:%d", *port)
 	grpcServer := grpc.NewServer()
-	pb.RegisterScaleServer(grpcServer, &RPC{})
-	grpcServer.Serve(server)
+	node := NewNode()
+	rpc := NewRPC(node)
+	pb.RegisterScaleServer(grpcServer, rpc)
+
+	defer grpcServer.Serve(server)
+
+	log.Printf("listening on: :%d", *port)
+	log.Printf("node.id: %s", IdToString(node.ID))
+	log.Printf("fingerTable: %s", node.fingerTable)
 }

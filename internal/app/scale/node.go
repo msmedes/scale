@@ -3,35 +3,30 @@ package scale
 import (
 	"errors"
 	"log"
-	"sync"
 	"time"
+
+	uuid "github.com/google/uuid"
 )
 
-type Config struct {
-}
-
 type Node struct {
-	config *Config
-
-	ID      []byte
-	Address string
-
-	Predecessor      *Node
-	predecessorMutex sync.RWMutex
-
-	Successor      *Node
-	successorMutex sync.RWMutex
-
-	FingerTable      FingerTable
-	fingerTableMutex sync.RWMutex
-
-	/* eventually will probably need:
-	a datastore
-	a list of connections
-	*/
+	ID          Key
+	predecessor *Node
+	successor   *Node
+	fingerTable FingerTable
+	store       *Store
 }
 
 type RemoteNode struct {
+	ID Key
+}
+
+func NewNode() *Node {
+	n := &Node{
+		ID:    genID(),
+		store: NewStore(),
+	}
+	n.fingerTable = NewFingerTable(M, n)
+	return n
 }
 
 func (node *Node) join(other *RemoteNode) error {
@@ -46,10 +41,20 @@ func (node *Node) notify(remoteNode *RemoteNode) {
 	log.Fatal("not implemented")
 }
 
-func (node *Node) findSuccessor(id []byte) (*RemoteNode, error) {
+func (node *Node) findSuccessor(ID []byte) (*RemoteNode, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (node *Node) findPredecessor(id []byte) (*RemoteNode, error) {
+func (node *Node) findPredecessor(ID []byte) (*RemoteNode, error) {
 	return nil, errors.New("not implemented")
+}
+
+func genID() Key {
+	ID, err := uuid.NewRandom()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return GenerateKey(ID.String())
 }

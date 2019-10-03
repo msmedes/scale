@@ -7,7 +7,8 @@ import (
 )
 
 func TestFingerMath(t *testing.T) {
-	// m (key size) is hardcoded to 8 at the moment
+	t.Parallel()
+
 	tests := []struct {
 		n   int64
 		i   int
@@ -40,11 +41,14 @@ func TestFingerMath(t *testing.T) {
 		{n: 1000, i: 8, exp: 232},
 		{n: 65563, i: 8, exp: 27},
 	}
+
 	for _, tt := range tests {
-		got := fingerMath(big.NewInt(tt.n).Bytes(), tt.i, 8)
+		n := big.NewInt(tt.n).Bytes()
+		got := fingerMath(n, tt.i, 8)
 		want := big.NewInt(tt.exp).Bytes()
-		if !bytes.Equal(got, want) {
-			t.Fatalf("Expected=%v, got=%v for %v", tt.exp, (&big.Int{}).SetBytes(got), tt)
+
+		if !bytes.Equal(got[:], want) {
+			t.Fatalf("expected %v, got %v for %v", tt.exp, (&big.Int{}).SetBytes(got[:]), tt)
 		}
 	}
 }
