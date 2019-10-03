@@ -21,11 +21,15 @@ type RemoteNode struct {
 }
 
 func NewNode() *Node {
-	return &Node{
+  node := &Node{
 		Id:          genId(),
 		store:       NewStore(),
 		fingerTable: NewFingerTable(M),
 	}
+
+  node.successor = node
+
+  return node
 }
 
 func (node *Node) join(other *RemoteNode) error {
