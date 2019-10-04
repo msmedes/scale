@@ -13,7 +13,12 @@ type Key = [M / 8]byte
 func GenerateKey(str string) Key {
 	h := sha1.New()
 	h.Write([]byte(str))
+
 	return ByteArrayToKey(h.Sum(nil))
+}
+
+func StringToKey(str string) Key {
+	return ByteArrayToKey([]byte(str))
 }
 
 func ByteArrayToKey(arr []byte) Key {
@@ -22,29 +27,25 @@ func ByteArrayToKey(arr []byte) Key {
 	return key
 }
 
-func IdToString(id Key) string {
-	return fmt.Sprintf("%x", id)
+func KeyToString(key Key) string {
+	return fmt.Sprintf("%x", key)
 }
 
-func between(x, a, b Key) bool {
-	// return bytes.Compare(a[:], x[:]) == -1 && bytes.Compare(x[:], b[:]) == -1
-	aSlice := a[:]
-	bSlice := b[:]
-	xSlice := x[:]
+func between(n, lower, upper Key) bool {
+	x := n[:]
+	lo := lower[:]
+	hi := upper[:]
 
-	switch bytes.Compare(aSlice, bSlice) {
+	switch bytes.Compare(lo, hi) {
 	case -1:
-		return bytes.Compare(aSlice, xSlice) == -1 && bytes.Compare(xSlice, bSlice) == -1
+		return bytes.Compare(lo, x) <= 0 && bytes.Compare(x, hi) < 0
 	case 1:
-		return bytes.Compare(xSlice, aSlice) == -1 || bytes.Compare(xSlice, bSlice) == -1
-	case 0:
-		return bytes.Compare(xSlice, aSlice) != 0
+		return bytes.Compare(hi, x) < 0 && bytes.Compare(x, lo) <= 0
 	}
 
 	return false
 }
 
-func betweenRightInclusive(x, a, b Key) bool {
-
-	return between(x, a, b) || bytes.Equal(x[:], b[:])
+func betweenRightInclusive(n, lower, upper Key) bool {
+	return between(n, lower, upper) || bytes.Equal(n[:], upper[:])
 }
