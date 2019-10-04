@@ -26,9 +26,9 @@ message IdReply {
 }
 
 service Scale {
-  rpc GetSuccessorId (RemoteId) returns (IdReply) {}
-  rpc SetPredecessorId (UpdateReq) returns (RpcOkay) {}
-  rpc SetSuccessorId (UpdateReq) returns (RpcOkay) {}
+  rpc GetSuccessor (RemoteId) returns (IdReply) {}
+  rpc SetPredecessor (UpdateReq) returns (RpcOkay) {}
+  rpc SetSuccessor (UpdateReq) returns (RpcOkay) {}
   rpc FindSuccessor (RemoteQuery) returns (IdReply) {}
   rpc Notify (RemoteNode) returns (RpcOkay) {}
   rpc ClosestPrecedingFinger (RemoteQuery) returns (IdReply) {}

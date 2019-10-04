@@ -1,4 +1,10 @@
 language: go
-
 go:
-- master
+  - "1.13.1"
+sudo: false
+env:
+  - GO111MODULE=on
+before_install:
+  - go get -u golang.org/x/lint/golint
+install: go mod download
+script: make

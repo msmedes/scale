@@ -10,8 +10,9 @@ import (
 	"google.golang.org/grpc"
 )
 
+// Node main node class
 type Node struct {
-	Id          Key
+	ID          Key
 	Addr        string
 	predecessor *Node
 	successor   *Node
@@ -20,14 +21,16 @@ type Node struct {
 	logger      *zap.SugaredLogger
 }
 
+// RemoteNode contains metadata about another node
 type RemoteNode struct {
-	Id   Key
+	ID   Key
 	Addr string
 }
 
+// NewNode create a new node
 func NewNode(addr string, logger *zap.SugaredLogger) *Node {
 	node := &Node{
-		Id:     genId(),
+		ID:     genID(),
 		Addr:   addr,
 		store:  NewStore(),
 		logger: logger,
@@ -39,6 +42,7 @@ func NewNode(addr string, logger *zap.SugaredLogger) *Node {
 	return node
 }
 
+// Join join an existing network via another node
 func (node *Node) Join(addr string) {
 	node.logger.Infof("joining network via node at %s", addr)
 
@@ -54,7 +58,7 @@ func (node *Node) Join(addr string) {
 
 	successor, err := client.FindSuccessor(
 		context.Background(),
-		&pb.RemoteQuery{Id: KeyToString(node.Id)},
+		&pb.RemoteQuery{Id: KeyToString(node.ID)},
 	)
 
 	if err != nil {
@@ -65,6 +69,7 @@ func (node *Node) Join(addr string) {
 	node.logger.Info("joined network")
 }
 
+// Shutdown leave the network
 func (node *Node) Shutdown() {
 	node.logger.Info("exiting")
 }
@@ -85,7 +90,7 @@ func (node *Node) findPredecessor(ID []byte) {
 	node.logger.Fatal("not implemented")
 }
 
-func genId() Key {
-	Id, _ := uuid.NewRandom()
-	return GenerateKey(Id.String())
+func genID() Key {
+	ID, _ := uuid.NewRandom()
+	return GenerateKey(ID.String())
 }
