@@ -21,12 +21,15 @@ type RemoteNode struct {
 }
 
 func NewNode() *Node {
-	n := &Node{
-		ID:    genID(),
-		store: NewStore(),
+	node := &Node{
+		Id:          genId(),
+		store:       NewStore(),
+		fingerTable: NewFingerTable(M, node),
 	}
-	n.fingerTable = NewFingerTable(M, n)
-	return n
+
+	node.successor = node
+
+	return node
 }
 
 func (node *Node) join(other *RemoteNode) error {
