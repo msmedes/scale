@@ -42,7 +42,7 @@ func fingerMath(n []byte, i int, m int) []byte {
 }
 
 func (f finger) String() string {
-	return fmt.Sprintf("%s", IdToString(f.Id))
+	return fmt.Sprintf("%s", KeyToString(f.Id))
 }
 
 func (ft FingerTable) String() string {

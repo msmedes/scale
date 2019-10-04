@@ -27,8 +27,8 @@ func ByteArrayToKey(arr []byte) Key {
 	return key
 }
 
-func IdToString(id Key) string {
-	return fmt.Sprintf("%x", id)
+func KeyToString(key Key) string {
+	return fmt.Sprintf("%x", key)
 }
 
 func between(n, lower, upper Key) bool {
