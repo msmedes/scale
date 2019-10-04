@@ -5,30 +5,32 @@ import (
 	"errors"
 
 	pb "github.com/msmedes/scale/internal/app/scale/proto"
+	"go.uber.org/zap"
 )
 
 // RPC rpc route handler
 type RPC struct {
-	node *Node
+	node   *Node
+	logger *zap.SugaredLogger
 }
 
 // NewRPC create a new RPC with the given node
-func NewRPC(node *Node) *RPC {
+func NewRPC(node *Node, logger *zap.SugaredLogger) *RPC {
 	return &RPC{
-		node: node,
+		node:   node,
+		logger: logger,
 	}
 }
 
-// ClosestPrecedingFinger TODO
-func (r *RPC) ClosestPrecedingFinger(context.Context, *pb.RemoteQuery) (*pb.IdReply, error) {
+// ClosestPrecedingNode TODO
+func (r *RPC) ClosestPrecedingNode(context.Context, *pb.RemoteQuery) (*pb.IdReply, error) {
 	return nil, errors.New("not implemented")
 }
 
-// FindSuccessor TODO
+// FindSuccessor RPC wrapper for node.FindSuccessor
 func (r *RPC) FindSuccessor(ctx context.Context, in *pb.RemoteQuery) (*pb.IdReply, error) {
-	res := &pb.IdReply{
-		Id: KeyToString(r.node.ID),
-	}
+	id := r.node.FindSuccessor(StringToKey(in.Id))
+	res := &pb.IdReply{Id: KeyToString(id)}
 
 	return res, nil
 }

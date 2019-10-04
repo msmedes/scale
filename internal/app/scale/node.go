@@ -25,6 +25,12 @@ type Node struct {
 type RemoteNode struct {
 	ID   Key
 	Addr string
+	RPC  pb.ScaleClient
+}
+
+// NewRemoteNode create a new remote node with an RPC client
+func NewRemoteNode(id Key, addr string) *RemoteNode {
+	return &RemoteNode{ID: id, Addr: addr}
 }
 
 // NewNode create a new node
@@ -82,12 +88,46 @@ func (node *Node) notify(remoteNode *RemoteNode) {
 	node.logger.Fatal("not implemented")
 }
 
-func (node *Node) findSuccessor(ID []byte) {
-	node.logger.Fatal("not implemented")
+// FindSuccessor find successor
+// TODO finger implementation
+func (node *Node) FindSuccessor(id Key) Key {
+	if BetweenRightInclusive(id, node.ID, node.successor.ID) {
+		return node.successor.ID
+	}
+
+	return node.ID
+
+	n := node.closestPrecedingNode(id)
+	conn, err := grpc.Dial(n.Addr, grpc.WithInsecure())
+
+	if err != nil {
+		node.logger.Fatal(err)
+	}
+
+	defer conn.Close()
+
+	client := pb.NewScaleClient(conn)
+
+	successor, err := client.FindSuccessor(
+		context.Background(),
+		&pb.RemoteQuery{Id: KeyToString(id)},
+	)
+
+	if err != nil {
+		node.logger.Fatal(err)
+	}
+
+	return StringToKey(successor.Id)
 }
 
-func (node *Node) findPredecessor(ID []byte) {
-	node.logger.Fatal("not implemented")
+// TODO
+func (node *Node) closestPrecedingNode(id Key) *RemoteNode {
+	return node.fingerTable[0].RemoteNode
+}
+
+// FindPredecessor find predecessor
+func (node *Node) FindPredecessor(ID Key) Key {
+	return node.ID
 }
 
 func genID() Key {

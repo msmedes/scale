@@ -41,7 +41,6 @@ func ServerListen() {
 
 	sugar.Infof("listening: %s", addr)
 	sugar.Infof("node.id: %s", KeyToString(node.ID))
-	// log.Printf("node.fingerTable: %s", node.fingerTable)
 
 	startGRPC(node, logger)
 }
@@ -53,7 +52,7 @@ func startGRPC(node *Node, logger *zap.Logger) {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	rpc := NewRPC(node)
+	rpc := NewRPC(node, logger.Sugar())
 
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
