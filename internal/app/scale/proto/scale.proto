@@ -31,5 +31,5 @@ service Scale {
   rpc SetSuccessor (UpdateReq) returns (RpcOkay) {}
   rpc FindSuccessor (RemoteQuery) returns (IdReply) {}
   rpc Notify (RemoteNode) returns (RpcOkay) {}
-  rpc ClosestPrecedingFinger (RemoteQuery) returns (IdReply) {}
+  rpc ClosestPrecedingNode (RemoteQuery) returns (IdReply) {}
 }

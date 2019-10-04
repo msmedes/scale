@@ -11,7 +11,7 @@ type FingerTable []*finger
 
 type finger struct {
 	ID         Key
-	RemoteNode *Node
+	RemoteNode *RemoteNode
 }
 
 // NewFingerTable create and populate a finger table
@@ -19,13 +19,13 @@ func NewFingerTable(m int, n *Node) FingerTable {
 	ft := make([]*finger, m)
 
 	for i := range ft {
-		ft[i] = newFinger(n.ID, n)
+		ft[i] = newFinger(n.ID, NewRemoteNode(n.ID, n.Addr))
 	}
 
 	return ft
 }
 
-func newFinger(id Key, n *Node) *finger {
+func newFinger(id Key, n *RemoteNode) *finger {
 	return &finger{ID: id, RemoteNode: n}
 }
 
