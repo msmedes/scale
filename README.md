@@ -1,3 +1,5 @@
+(https://travis-ci.com/msmedes/scale.svg?branch=master)
+
 # Scale
 Go implementation of Chord - DHT protocol
 
