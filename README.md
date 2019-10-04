@@ -1,4 +1,4 @@
-(https://travis-ci.com/msmedes/scale.svg?branch=master)
+[![Build Status](https://travis-ci.com/msmedes/scale.svg?branch=master)](https://travis-ci.com/msmedes/scale)
 
 # Scale
 Go implementation of Chord - DHT protocol
