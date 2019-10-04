@@ -29,6 +29,6 @@ func ServerListen() {
 	defer grpcServer.Serve(server)
 
 	log.Printf("listening on: :%d", *port)
-	log.Printf("node.id: %s", IdToString(node.ID))
-	log.Printf("fingerTable: %s", node.fingerTable)
+	log.Printf("node.id: %s", IdToString(node.Id))
+	log.Printf("node.fingerTable: %s", node.fingerTable)
 }

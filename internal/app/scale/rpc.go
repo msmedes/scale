@@ -30,7 +30,7 @@ func (r *RPC) GetSuccessorId(ctx context.Context, in *pb.RemoteId) (*pb.IdReply,
 	log.Printf("%s", in.Id)
 
 	res := &pb.IdReply{
-		Id: IdToString(r.node.ID),
+		Id: IdToString(r.node.Id),
 	}
 
 	return res, nil

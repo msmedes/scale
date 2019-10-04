@@ -9,7 +9,7 @@ import (
 )
 
 type Node struct {
-	ID          Key
+	Id          Key
 	predecessor *Node
 	successor   *Node
 	fingerTable FingerTable
@@ -17,16 +17,16 @@ type Node struct {
 }
 
 type RemoteNode struct {
-	ID Key
+	Id Key
 }
 
 func NewNode() *Node {
 	node := &Node{
-		Id:          genId(),
-		store:       NewStore(),
-		fingerTable: NewFingerTable(M, node),
+		Id:    genId(),
+		store: NewStore(),
 	}
 
+	node.fingerTable = NewFingerTable(M, node)
 	node.successor = node
 
 	return node
@@ -52,12 +52,12 @@ func (node *Node) findPredecessor(ID []byte) (*RemoteNode, error) {
 	return nil, errors.New("not implemented")
 }
 
-func genID() Key {
-	ID, err := uuid.NewRandom()
+func genId() Key {
+	Id, err := uuid.NewRandom()
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return GenerateKey(ID.String())
+	return GenerateKey(Id.String())
 }

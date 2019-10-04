@@ -9,29 +9,22 @@ import (
 type FingerTable []*finger
 
 type finger struct {
-	ID         Key
+	Id         Key
 	RemoteNode *Node
 }
 
 func NewFingerTable(m int, n *Node) FingerTable {
 	ft := make([]*finger, m)
+
 	for i := range ft {
-		ft[i] = newFinger(n.ID, n)
+		ft[i] = newFinger(n.Id, n)
 	}
+
 	return ft
 }
 
-// func InitFingerTable(n *Node) {
-// 	// when a new chord is created the first node should just have a finger
-// 	// table filled with fingers pointing to itself since it doesn't have
-// 	// a predecessor or successor yet
-// 	for i := range n.fingerTable {
-// 		n.fingerTable[i] = newFinger(n.ID, n)
-// 	}
-// }
-
 func newFinger(id Key, n *Node) *finger {
-	return &finger{ID: id, RemoteNode: n}
+	return &finger{Id: id, RemoteNode: n}
 }
 
 func fingerMath(n []byte, i int, m int) []byte {
@@ -48,15 +41,19 @@ func fingerMath(n []byte, i int, m int) []byte {
 	return res.Bytes()
 }
 
+func (f finger) String() string {
+	return fmt.Sprintf("%s", IdToString(f.Id))
+}
+
 func (ft FingerTable) String() string {
 	var buf bytes.Buffer
 
+	buf.WriteString("\n")
+
 	for _, val := range ft {
-		buf.WriteString(fmt.Sprintf(
-			"\n{id:%v\tnodeId:%v",
-			IdToString(val.ID),
-			IdToString(val.RemoteNode.ID),
-		))
+		str := fmt.Sprintf("%s\n", val.String())
+		buf.WriteString(str)
 	}
+
 	return buf.String()
 }
