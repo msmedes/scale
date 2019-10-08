@@ -9,22 +9,18 @@ import (
 type FingerTable []*finger
 
 type finger struct {
-	Id         Key
-	RemoteNode *Node
+	ID Key
 }
 
-func NewFingerTable(m int, n *Node) FingerTable {
+// NewFingerTable create and populate a finger table
+func NewFingerTable(m int, ID Key) FingerTable {
 	ft := make([]*finger, m)
 
 	for i := range ft {
-		ft[i] = newFinger(n.Id, n)
+		ft[i] = &finger{ID: ID}
 	}
 
 	return ft
-}
-
-func newFinger(id Key, n *Node) *finger {
-	return &finger{Id: id, RemoteNode: n}
 }
 
 func fingerMath(n []byte, i int, m int) []byte {
@@ -42,7 +38,7 @@ func fingerMath(n []byte, i int, m int) []byte {
 }
 
 func (f finger) String() string {
-	return fmt.Sprintf("%s", KeyToString(f.Id))
+	return fmt.Sprintf("%s", KeyToString(f.ID))
 }
 
 func (ft FingerTable) String() string {

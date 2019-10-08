@@ -39,7 +39,7 @@ func ServerListen() {
 	}
 
 	sugar.Infof("listening: %s", addr)
-	sugar.Infof("node.id: %s", KeyToString(node.Id))
+	sugar.Infof("node.id: %s", KeyToString(node.ID))
 	// log.Printf("node.fingerTable: %s", node.fingerTable)
 
 	startGRPC(node, logger)

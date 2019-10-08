@@ -8,31 +8,37 @@ func TestBetween(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		n     string
-		lower string
-		upper string
-		exp   bool
+		x   string
+		a   string
+		b   string
+		exp bool
 	}{
-		{n: "10", lower: "0", upper: "20", exp: true},
-		{n: "10", lower: "20", upper: "20", exp: false},
-		{n: "10", lower: "12", upper: "10", exp: false},
-		{n: "529", lower: "527", upper: "789", exp: true},
-		{n: "a", lower: "a", upper: "z", exp: true},
+		{x: "10", a: "0", b: "20", exp: true},
+		{x: "10", a: "20", b: "20", exp: false},
+		{x: "529", a: "527", b: "789", exp: true},
+		{x: "a", a: "a", b: "z", exp: false},
+
+		{x: "20", a: "527", b: "277", exp: true},
+		{x: "788", a: "527", b: "277", exp: true},
+		{x: "20", a: "5", b: "2", exp: false},
+		{x: "1", a: "5", b: "2", exp: true},
+		{x: "3", a: "5", b: "2", exp: false},
+		{x: "20", a: "2", b: "5", exp: true},
 	}
 	for _, test := range tests {
-		want, got := test.exp, between(
-			StringToKey(test.n),
-			StringToKey(test.lower),
-			StringToKey(test.upper),
+		want, got := test.exp, Between(
+			StringToKey(test.x),
+			StringToKey(test.a),
+			StringToKey(test.b),
 		)
 
 		if got != want {
 			t.Fatalf(
 				"expected %t for between(%s, %s, %s), got %t",
 				want,
-				test.n,
-				test.lower,
-				test.upper,
+				test.x,
+				test.a,
+				test.b,
 				got,
 			)
 		}

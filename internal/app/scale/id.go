@@ -31,21 +31,26 @@ func KeyToString(key Key) string {
 	return fmt.Sprintf("%x", key)
 }
 
-func between(n, lower, upper Key) bool {
-	x := n[:]
-	lo := lower[:]
-	hi := upper[:]
+// Between returns whether n is between lower and upper
+func Between(x, a, b Key) bool {
 
-	switch bytes.Compare(lo, hi) {
-	case -1:
-		return bytes.Compare(lo, x) <= 0 && bytes.Compare(x, hi) < 0
-	case 1:
-		return bytes.Compare(hi, x) < 0 && bytes.Compare(x, lo) <= 0
+	X := x[:]
+	A := a[:]
+	B := b[:]
+	// if A > B:
+	if bytes.Compare(A, B) > 0 {
+		// X is between A and B if X > A or X < B
+		return bytes.Compare(X, A) > 0 || bytes.Compare(X, B) < 0
 	}
 
-	return false
+	return bytes.Compare(A, X) < 0 && bytes.Compare(X, B) < 0
 }
 
-func betweenRightInclusive(n, lower, upper Key) bool {
-	return between(n, lower, upper) || bytes.Equal(n[:], upper[:])
+// BetweenRightInclusive returns whether n is between lower and upper, upper
+// inclusive
+func BetweenRightInclusive(x, a, b Key) bool {
+	if bytes.Compare(a[:], b[:]) > 0 {
+		return Between(x, a, b) || bytes.Equal(x[:], a[:])
+	}
+	return Between(x, a, b) || bytes.Equal(x[:], b[:])
 }

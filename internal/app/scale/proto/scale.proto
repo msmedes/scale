@@ -3,33 +3,34 @@ syntax = "proto3";
 package scale;
 
 message RemoteId {
-  string id = 1;
+  bytes id = 1;
 }
 
 message UpdateReq {
 }
 
 message RemoteQuery {
-  string id = 1;
+  bytes id = 1;
 }
 
 message RemoteNode {
-  string id = 1;
+  bytes id = 1;
   string addr = 2;
 }
 
 message RpcOkay {
 }
-
+ 
 message IdReply {
-  string id = 1;
+  bytes id = 1;
 }
 
+
 service Scale {
-  rpc GetSuccessorId (RemoteId) returns (IdReply) {}
-  rpc SetPredecessorId (UpdateReq) returns (RpcOkay) {}
-  rpc SetSuccessorId (UpdateReq) returns (RpcOkay) {}
-  rpc FindSuccessor (RemoteQuery) returns (IdReply) {}
+  rpc GetSuccessor (UpdateReq) returns (RemoteNode) {}
+  rpc SetPredecessor (UpdateReq) returns (RpcOkay) {}
+  rpc SetSuccessor (UpdateReq) returns (RpcOkay) {}
+  rpc FindSuccessor (RemoteQuery) returns (RemoteNode) {}
   rpc Notify (RemoteNode) returns (RpcOkay) {}
-  rpc ClosestPrecedingFinger (RemoteQuery) returns (IdReply) {}
+  rpc ClosestPrecedingFinger (RemoteQuery) returns (RemoteNode) {}
 }
