@@ -6,15 +6,20 @@ import (
 
 	pb "github.com/msmedes/scale/internal/app/scale/proto"
 	"google.golang.org/grpc"
+	"go.uber.org/zap"
 )
 
+// RPC rpc route handler
 type RPC struct {
-	node *Node
+	node   *Node
+	logger *zap.SugaredLogger
 }
 
-func NewRPC(node *Node) *RPC {
+// NewRPC create a new RPC with the given node
+func NewRPC(node *Node, logger *zap.SugaredLogger) *RPC {
 	return &RPC{
-		node: node,
+		node:   node,
+		logger: logger,
 	}
 }
 
@@ -42,14 +47,17 @@ func (r *RPC) GetSuccessor(ctx context.Context, in *pb.UpdateReq) (*pb.RemoteNod
 	return res, nil
 }
 
+// Notify TODO
 func (r *RPC) Notify(context.Context, *pb.RemoteNode) (*pb.RpcOkay, error) {
 	return nil, errors.New("not implemented")
 }
 
+// SetPredecessor TODO
 func (r *RPC) SetPredecessor(context.Context, *pb.UpdateReq) (*pb.RpcOkay, error) {
 	return nil, nil
 }
 
+// SetSuccessor TODO
 func (r *RPC) SetSuccessor(context.Context, *pb.UpdateReq) (*pb.RpcOkay, error) {
 	return nil, errors.New("not implemented")
 }

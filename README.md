@@ -15,8 +15,7 @@ brew cask install bloomrpc
 ```
 
 #### Workflow
-- `make deps` - install dependencies
-- `make test` - run tests
+- `make` - run linting and tests
 - `make serve` - start grpc server
 
 ### Resources

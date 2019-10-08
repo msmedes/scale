@@ -6,6 +6,7 @@ import (
 	"math/big"
 )
 
+// FingerTable contains nodes in network for lookups
 type FingerTable []*finger
 
 type finger struct {

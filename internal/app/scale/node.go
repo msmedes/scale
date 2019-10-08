@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Node main node class
 type Node struct {
 	ID                Key
 	Addr              string
@@ -41,6 +42,7 @@ func NewNode(addr string, logger *zap.SugaredLogger) *Node {
 	return node
 }
 
+// Join join an existing network via another node
 func (node *Node) Join(addr string) {
 	node.logger.Infof("joining network via node at %s", addr)
 
@@ -68,6 +70,7 @@ func (node *Node) Join(addr string) {
 	node.logger.Info("joined network")
 }
 
+// Shutdown leave the network
 func (node *Node) Shutdown() {
 	node.logger.Info("exiting")
 }

@@ -357,6 +357,7 @@ func (c *scaleClient) Notify(ctx context.Context, in *RemoteNode, opts ...grpc.C
 	return out, nil
 }
 
+
 func (c *scaleClient) ClosestPrecedingFinger(ctx context.Context, in *RemoteQuery, opts ...grpc.CallOption) (*RemoteNode, error) {
 	out := new(RemoteNode)
 	err := c.cc.Invoke(ctx, "/scale.Scale/ClosestPrecedingFinger", in, out, opts...)
@@ -493,20 +494,20 @@ func _Scale_Notify_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Scale_ClosestPrecedingFinger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Scale_ClosestPrecedingNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RemoteQuery)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ScaleServer).ClosestPrecedingFinger(ctx, in)
+		return srv.(ScaleServer).ClosestPrecedingNode(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/scale.Scale/ClosestPrecedingFinger",
+		FullMethod: "/scale.Scale/ClosestPrecedingNode",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ScaleServer).ClosestPrecedingFinger(ctx, req.(*RemoteQuery))
+		return srv.(ScaleServer).ClosestPrecedingNode(ctx, req.(*RemoteQuery))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -536,8 +537,8 @@ var _Scale_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Scale_Notify_Handler,
 		},
 		{
-			MethodName: "ClosestPrecedingFinger",
-			Handler:    _Scale_ClosestPrecedingFinger_Handler,
+			MethodName: "ClosestPrecedingNode",
+			Handler:    _Scale_ClosestPrecedingNode_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

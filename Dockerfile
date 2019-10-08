@@ -1,5 +1,4 @@
 FROM golang:1.13.1 as builder
-MAINTAINER msmedes
 ENV GO111MODULE=on
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 ARG PKG=/go/src/github.com/msmedes/scale
