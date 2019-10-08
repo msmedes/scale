@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	pb "github.com/msmedes/scale/internal/app/scale/proto"
-	"google.golang.org/grpc"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
 
 // RPC rpc route handler
