@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"fmt"
-	"log"
 )
 
 // M keyspace
@@ -40,20 +39,25 @@ func KeyToString(key Key) string {
 }
 
 // Between returns whether n is between lower and upper
-func Between(n, lower, upper Key) bool {
-	x := n[:]
-	lo := lower[:]
-	hi := upper[:]
+func Between(x, a, b Key) bool {
 
-	if bytes.Compare(lo, hi) > 0 {
-		log.Fatalf("unexpected bounds: %s/%s", lo, hi)
+	X := x[:]
+	A := a[:]
+	B := b[:]
+	// if A > B:
+	if bytes.Compare(A, B) > 0 {
+		// X is between A and B if X > A or X < B
+		return bytes.Compare(X, A) > 0 || bytes.Compare(X, B) < 0
 	}
 
-	return bytes.Compare(lo, x) < 0 && bytes.Compare(x, hi) < 0
+	return bytes.Compare(A, X) < 0 && bytes.Compare(X, B) < 0
 }
 
 // BetweenRightInclusive returns whether n is between lower and upper, upper
 // inclusive
-func BetweenRightInclusive(n, lower, upper Key) bool {
-	return Between(n, lower, upper) || bytes.Equal(n[:], upper[:])
+func BetweenRightInclusive(x, a, b Key) bool {
+	if bytes.Compare(a[:], b[:]) > 0 {
+		return Between(x, a, b) || bytes.Equal(x[:], a[:])
+	}
+	return Between(x, a, b) || bytes.Equal(x[:], b[:])
 }
