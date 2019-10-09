@@ -11,5 +11,14 @@ type RemoteNode struct {
 
 // NewRemoteNode creates a new RemoteNode with an RPC client
 func NewRemoteNode(addr string, node *Node) *RemoteNode {
-	return &RemoteNode{ID: GenerateKey(addr), Addr: addr, RPC: GetScaleClient(addr, node)}
+	// If we have an address we can check to see if we already have a connection
+	//
+
+	id := GenerateKey(addr)
+	remoteNode, ok := node.remoteConnections[id]
+	if !ok {
+		return &RemoteNode{ID: id, Addr: addr, RPC: GetScaleClient(addr, node)}
+	}
+
+	return remoteNode
 }
