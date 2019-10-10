@@ -47,9 +47,30 @@ func (r *RPC) GetSuccessor(ctx context.Context, in *pb.UpdateReq) (*pb.RemoteNod
 	return res, nil
 }
 
-// Notify TODO
-func (r *RPC) Notify(context.Context, *pb.RemoteNode) (*pb.RpcOkay, error) {
-	return nil, errors.New("not implemented")
+// GetPredecessor returns the predecessor of the node
+func (r *RPC) GetPredecessor(ctx context.Context, in *pb.UpdateReq) (*pb.RemoteNode, error) {
+	predecessor := r.node.GetPredecessor()
+
+	res := &pb.RemoteNode{
+		Id:   predecessor.ID[:],
+		Addr: predecessor.Addr,
+	}
+
+	return res, nil
+}
+
+// Notify tells a node that another node (it thinks) it's its predecessor
+// man english is a weird language
+func (r *RPC) Notify(ctx context.Context, in *pb.RemoteNode) (*pb.RpcOkay, error) {
+	message := r.node.Notify(ByteArrayToKey(in.Id), in.Addr)
+
+	// idk is this a thing?
+	res := &pb.RpcOkay{
+		Message: message,
+	}
+	r.logger.Info(message)
+
+	return res, nil
 }
 
 // SetPredecessor TODO

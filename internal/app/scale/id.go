@@ -7,7 +7,7 @@ import (
 )
 
 // M keyspace
-const M = 160
+const M = 32
 
 // Key 20 byte key
 type Key = [M / 8]byte

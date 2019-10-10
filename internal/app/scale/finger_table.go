@@ -38,6 +38,14 @@ func fingerMath(n []byte, i int, m int) []byte {
 	return res.Bytes()
 }
 
+func (node *Node) fixNextFinger(next int) int {
+	nextHash := fingerMath(node.ID[:], next, M)
+	successor := node.findSuccessor(ByteArrayToKey(nextHash))
+	finger := &finger{ID: successor.ID}
+	node.fingerTable[next] = finger
+	return next + 1
+}
+
 func (f finger) String() string {
 	return fmt.Sprintf("%s", KeyToString(f.ID))
 }
