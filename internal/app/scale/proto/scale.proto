@@ -2,37 +2,30 @@ syntax = "proto3";
 
 package scale;
 
-message RemoteId {
-  bytes id = 1;
-}
+message Empty {}
+message Success {}
+message IdReply { bytes id = 1; }
+message RemoteId { bytes id = 1; }
+message RemoteQuery { bytes id = 1; }
+message GetRequest { bytes key = 1; }
+message GetResponse { bytes value = 1; }
 
-message UpdateReq {
-}
-
-message RemoteQuery {
-  bytes id = 1;
+message SetRequest {
+  bytes key = 1;
+  bytes value = 2;
 }
 
 message RemoteNode {
   bytes id = 1;
   string addr = 2;
+  bool present = 3;
 }
-
-message RpcOkay {
-  string message = 1;
-}
- 
-message IdReply {
-  bytes id = 1;
-}
-
 
 service Scale {
-  rpc GetSuccessor (UpdateReq) returns (RemoteNode) {}
-  rpc GetPredecessor (UpdateReq) returns (RemoteNode) {}
-  rpc SetPredecessor (UpdateReq) returns (RpcOkay) {}
-  rpc SetSuccessor (UpdateReq) returns (RpcOkay) {}
-  rpc FindSuccessor (RemoteQuery) returns (RemoteNode) {}
-  rpc Notify (RemoteNode) returns (RpcOkay) {}
-  rpc ClosestPrecedingFinger (RemoteQuery) returns (RemoteNode) {}
+  rpc GetSuccessor(Empty) returns (RemoteNode) {}
+  rpc GetPredecessor(Empty) returns (RemoteNode) {}
+  rpc FindSuccessor(RemoteQuery) returns (RemoteNode) {}
+  rpc Notify(RemoteNode) returns (Success) {}
+  rpc GetLocal(GetRequest) returns (GetResponse) {}
+  rpc SetLocal(SetRequest) returns (Success) {}
 }

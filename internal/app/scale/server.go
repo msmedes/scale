@@ -3,24 +3,22 @@ package scale
 import (
 	"fmt"
 	"log"
-	"net"
 	"os"
 
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-
-	pb "github.com/msmedes/scale/internal/app/scale/proto"
 )
 
 var (
-	port = getEnv("PORT", "3000")
-	addr = fmt.Sprintf("0.0.0.0:%s", port)
-	join = getEnv("JOIN", "")
+	port    = getEnv("PORT", "3000")
+	addr    = fmt.Sprintf("0.0.0.0:%s", port)
+	join    = getEnv("JOIN", "")
+	webPort = getEnv("WEB", "8000")
+	webAddr = fmt.Sprintf("0.0.0.0:%s", webPort)
 )
 
-// ServerListen start up server
+// ServerListen create Node to represent this current node. Start up a grpc
+// server to accept requests from remote nodes and invoke methods on the node object
+// also, fire up the background process to periodically stabilize the node's finger table
 func ServerListen() {
 	logger, err := zap.NewDevelopment()
 
@@ -32,36 +30,27 @@ func ServerListen() {
 
 	sugar := logger.Sugar()
 	node := NewNode(addr, sugar)
+	rpc := NewRPC(node, logger)
+	graphql := NewGraphQL(webAddr, sugar, rpc)
 
 	defer node.Shutdown()
+
+	go graphql.ServerListen()
+	sugar.Infof("listening - graphql: %s", webAddr)
+
+	go rpc.ServerListen()
+	sugar.Infof("listening - internode: %s", addr)
+
+	go node.StabilizationStart()
 
 	if len(join) > 0 {
 		node.Join(join)
 	}
 
-	sugar.Infof("listening: %s", addr)
 	sugar.Infof("node.id: %s", KeyToString(node.ID))
 
-	startGRPC(node, logger)
-}
-
-func startGRPC(node *Node, logger *zap.Logger) {
-	server, err := net.Listen("tcp", addr)
-
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+	for {
 	}
-
-	rpc := NewRPC(node, logger.Sugar())
-
-	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
-			grpc_zap.UnaryServerInterceptor(logger),
-		)),
-	)
-
-	pb.RegisterScaleServer(grpcServer, rpc)
-	grpcServer.Serve(server)
 }
 
 func getEnv(key string, defaultVal string) string {

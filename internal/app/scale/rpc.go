@@ -2,8 +2,11 @@ package scale
 
 import (
 	"context"
-	"errors"
+	"log"
+	"net"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	pb "github.com/msmedes/scale/internal/app/scale/proto"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -12,48 +15,73 @@ import (
 // RPC rpc route handler
 type RPC struct {
 	node   *Node
-	logger *zap.SugaredLogger
+	logger *zap.Logger
 }
 
 // NewRPC create a new RPC with the given node
-func NewRPC(node *Node, logger *zap.SugaredLogger) *RPC {
+func NewRPC(node *Node, logger *zap.Logger) *RPC {
 	return &RPC{
 		node:   node,
 		logger: logger,
 	}
 }
 
-// ClosestPrecedingFinger TODO
-func (r *RPC) ClosestPrecedingFinger(context.Context, *pb.RemoteQuery) (*pb.RemoteNode, error) {
-	return nil, errors.New("not implemented")
+// GetLocal RPC wrapper for node.store.Get
+func (r *RPC) GetLocal(ctx context.Context, in *pb.GetRequest) (*pb.GetResponse, error) {
+	res := &pb.GetResponse{
+		Value: r.node.store.Get(ByteArrayToKey(in.Key)),
+	}
+
+	return res, nil
+}
+
+// SetLocal RPC wrapper for node.store.Set
+func (r *RPC) SetLocal(ctx context.Context, in *pb.SetRequest) (*pb.Success, error) {
+	r.node.store.Set(ByteArrayToKey(in.Key), in.Value)
+
+	return &pb.Success{}, nil
 }
 
 // FindSuccessor RPC wrapper for node.FindSuccessor
 func (r *RPC) FindSuccessor(ctx context.Context, in *pb.RemoteQuery) (*pb.RemoteNode, error) {
 	successor := r.node.FindSuccessor(ByteArrayToKey(in.Id))
-
 	res := &pb.RemoteNode{Id: successor.ID[:], Addr: successor.Addr}
 
 	return res, nil
 }
 
-// GetSuccessor TODO
-func (r *RPC) GetSuccessor(ctx context.Context, in *pb.UpdateReq) (*pb.RemoteNode, error) {
+// GetSuccessor successor of the node
+func (r *RPC) GetSuccessor(context.Context, *pb.Empty) (*pb.RemoteNode, error) {
+	successor, err := r.node.GetSuccessor()
+
+	if err != nil {
+		return nil, err
+	}
+
 	res := &pb.RemoteNode{
-		Id:   r.node.successor.ID[:],
-		Addr: r.node.successor.Addr,
+		Id:   successor.ID[:],
+		Addr: successor.Addr,
 	}
 
 	return res, nil
 }
 
 // GetPredecessor returns the predecessor of the node
-func (r *RPC) GetPredecessor(ctx context.Context, in *pb.UpdateReq) (*pb.RemoteNode, error) {
-	predecessor := r.node.GetPredecessor()
+func (r *RPC) GetPredecessor(context.Context, *pb.Empty) (*pb.RemoteNode, error) {
+	predecessor, err := r.node.GetPredecessor()
+
+	if err != nil {
+		return nil, err
+	} else if predecessor == nil {
+		empty := &pb.RemoteNode{Present: false}
+
+		return empty, nil
+	}
 
 	res := &pb.RemoteNode{
-		Id:   predecessor.ID[:],
-		Addr: predecessor.Addr,
+		Id:      predecessor.ID[:],
+		Addr:    predecessor.Addr,
+		Present: true,
 	}
 
 	return res, nil
@@ -61,26 +89,14 @@ func (r *RPC) GetPredecessor(ctx context.Context, in *pb.UpdateReq) (*pb.RemoteN
 
 // Notify tells a node that another node (it thinks) it's its predecessor
 // man english is a weird language
-func (r *RPC) Notify(ctx context.Context, in *pb.RemoteNode) (*pb.RpcOkay, error) {
-	message := r.node.Notify(ByteArrayToKey(in.Id), in.Addr)
+func (r *RPC) Notify(ctx context.Context, in *pb.RemoteNode) (*pb.Success, error) {
+	err := r.node.Notify(ByteArrayToKey(in.Id), in.Addr)
 
-	// idk is this a thing?
-	res := &pb.RpcOkay{
-		Message: message,
+	if err != nil {
+		return nil, err
 	}
-	r.logger.Info(message)
 
-	return res, nil
-}
-
-// SetPredecessor TODO
-func (r *RPC) SetPredecessor(context.Context, *pb.UpdateReq) (*pb.RpcOkay, error) {
-	return nil, nil
-}
-
-// SetSuccessor TODO
-func (r *RPC) SetSuccessor(context.Context, *pb.UpdateReq) (*pb.RpcOkay, error) {
-	return nil, errors.New("not implemented")
+	return &pb.Success{}, nil
 }
 
 // GetScaleClient returns a ScaleClient from the node to a specific remote Node.
@@ -102,5 +118,22 @@ func GetScaleClient(addr string, node *Node) pb.ScaleClient {
 	}
 
 	return client
+}
 
+// ServerListen start up the server
+func (r *RPC) ServerListen() {
+	server, err := net.Listen("tcp", addr)
+
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			grpc_zap.UnaryServerInterceptor(r.logger),
+		)),
+	)
+
+	pb.RegisterScaleServer(grpcServer, r)
+	grpcServer.Serve(server)
 }

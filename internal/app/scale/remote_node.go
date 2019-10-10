@@ -9,13 +9,12 @@ type RemoteNode struct {
 	RPC  pb.ScaleClient
 }
 
-// NewRemoteNode creates a new RemoteNode with an RPC client
+// NewRemoteNode creates a new RemoteNode with an RPC client.
+// This will reuse RPC connections if given the same address
 func NewRemoteNode(addr string, node *Node) *RemoteNode {
-	// If we have an address we can check to see if we already have a connection
-	//
-
 	id := GenerateKey(addr)
 	remoteNode, ok := node.remoteConnections[id]
+
 	if !ok {
 		return &RemoteNode{ID: id, Addr: addr, RPC: GetScaleClient(addr, node)}
 	}

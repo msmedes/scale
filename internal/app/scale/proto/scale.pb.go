@@ -24,6 +24,107 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
+type Empty struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *Empty) Reset()         { *m = Empty{} }
+func (m *Empty) String() string { return proto.CompactTextString(m) }
+func (*Empty) ProtoMessage()    {}
+func (*Empty) Descriptor() ([]byte, []int) {
+	return fileDescriptor_ea80762c827c7836, []int{0}
+}
+
+func (m *Empty) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Empty.Unmarshal(m, b)
+}
+func (m *Empty) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Empty.Marshal(b, m, deterministic)
+}
+func (m *Empty) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Empty.Merge(m, src)
+}
+func (m *Empty) XXX_Size() int {
+	return xxx_messageInfo_Empty.Size(m)
+}
+func (m *Empty) XXX_DiscardUnknown() {
+	xxx_messageInfo_Empty.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Empty proto.InternalMessageInfo
+
+type Success struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *Success) Reset()         { *m = Success{} }
+func (m *Success) String() string { return proto.CompactTextString(m) }
+func (*Success) ProtoMessage()    {}
+func (*Success) Descriptor() ([]byte, []int) {
+	return fileDescriptor_ea80762c827c7836, []int{1}
+}
+
+func (m *Success) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Success.Unmarshal(m, b)
+}
+func (m *Success) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Success.Marshal(b, m, deterministic)
+}
+func (m *Success) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Success.Merge(m, src)
+}
+func (m *Success) XXX_Size() int {
+	return xxx_messageInfo_Success.Size(m)
+}
+func (m *Success) XXX_DiscardUnknown() {
+	xxx_messageInfo_Success.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Success proto.InternalMessageInfo
+
+type IdReply struct {
+	Id                   []byte   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *IdReply) Reset()         { *m = IdReply{} }
+func (m *IdReply) String() string { return proto.CompactTextString(m) }
+func (*IdReply) ProtoMessage()    {}
+func (*IdReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_ea80762c827c7836, []int{2}
+}
+
+func (m *IdReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_IdReply.Unmarshal(m, b)
+}
+func (m *IdReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_IdReply.Marshal(b, m, deterministic)
+}
+func (m *IdReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_IdReply.Merge(m, src)
+}
+func (m *IdReply) XXX_Size() int {
+	return xxx_messageInfo_IdReply.Size(m)
+}
+func (m *IdReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_IdReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_IdReply proto.InternalMessageInfo
+
+func (m *IdReply) GetId() []byte {
+	if m != nil {
+		return m.Id
+	}
+	return nil
+}
+
 type RemoteId struct {
 	Id                   []byte   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -35,7 +136,7 @@ func (m *RemoteId) Reset()         { *m = RemoteId{} }
 func (m *RemoteId) String() string { return proto.CompactTextString(m) }
 func (*RemoteId) ProtoMessage()    {}
 func (*RemoteId) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ea80762c827c7836, []int{0}
+	return fileDescriptor_ea80762c827c7836, []int{3}
 }
 
 func (m *RemoteId) XXX_Unmarshal(b []byte) error {
@@ -63,37 +164,6 @@ func (m *RemoteId) GetId() []byte {
 	return nil
 }
 
-type UpdateReq struct {
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *UpdateReq) Reset()         { *m = UpdateReq{} }
-func (m *UpdateReq) String() string { return proto.CompactTextString(m) }
-func (*UpdateReq) ProtoMessage()    {}
-func (*UpdateReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ea80762c827c7836, []int{1}
-}
-
-func (m *UpdateReq) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_UpdateReq.Unmarshal(m, b)
-}
-func (m *UpdateReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_UpdateReq.Marshal(b, m, deterministic)
-}
-func (m *UpdateReq) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_UpdateReq.Merge(m, src)
-}
-func (m *UpdateReq) XXX_Size() int {
-	return xxx_messageInfo_UpdateReq.Size(m)
-}
-func (m *UpdateReq) XXX_DiscardUnknown() {
-	xxx_messageInfo_UpdateReq.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_UpdateReq proto.InternalMessageInfo
-
 type RemoteQuery struct {
 	Id                   []byte   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -105,7 +175,7 @@ func (m *RemoteQuery) Reset()         { *m = RemoteQuery{} }
 func (m *RemoteQuery) String() string { return proto.CompactTextString(m) }
 func (*RemoteQuery) ProtoMessage()    {}
 func (*RemoteQuery) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ea80762c827c7836, []int{2}
+	return fileDescriptor_ea80762c827c7836, []int{4}
 }
 
 func (m *RemoteQuery) XXX_Unmarshal(b []byte) error {
@@ -133,9 +203,135 @@ func (m *RemoteQuery) GetId() []byte {
 	return nil
 }
 
+type GetRequest struct {
+	Key                  []byte   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetRequest) Reset()         { *m = GetRequest{} }
+func (m *GetRequest) String() string { return proto.CompactTextString(m) }
+func (*GetRequest) ProtoMessage()    {}
+func (*GetRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_ea80762c827c7836, []int{5}
+}
+
+func (m *GetRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetRequest.Unmarshal(m, b)
+}
+func (m *GetRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetRequest.Marshal(b, m, deterministic)
+}
+func (m *GetRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetRequest.Merge(m, src)
+}
+func (m *GetRequest) XXX_Size() int {
+	return xxx_messageInfo_GetRequest.Size(m)
+}
+func (m *GetRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetRequest proto.InternalMessageInfo
+
+func (m *GetRequest) GetKey() []byte {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
+
+type GetResponse struct {
+	Value                []byte   `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetResponse) Reset()         { *m = GetResponse{} }
+func (m *GetResponse) String() string { return proto.CompactTextString(m) }
+func (*GetResponse) ProtoMessage()    {}
+func (*GetResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_ea80762c827c7836, []int{6}
+}
+
+func (m *GetResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetResponse.Unmarshal(m, b)
+}
+func (m *GetResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetResponse.Marshal(b, m, deterministic)
+}
+func (m *GetResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetResponse.Merge(m, src)
+}
+func (m *GetResponse) XXX_Size() int {
+	return xxx_messageInfo_GetResponse.Size(m)
+}
+func (m *GetResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetResponse proto.InternalMessageInfo
+
+func (m *GetResponse) GetValue() []byte {
+	if m != nil {
+		return m.Value
+	}
+	return nil
+}
+
+type SetRequest struct {
+	Key                  []byte   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value                []byte   `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *SetRequest) Reset()         { *m = SetRequest{} }
+func (m *SetRequest) String() string { return proto.CompactTextString(m) }
+func (*SetRequest) ProtoMessage()    {}
+func (*SetRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_ea80762c827c7836, []int{7}
+}
+
+func (m *SetRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SetRequest.Unmarshal(m, b)
+}
+func (m *SetRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SetRequest.Marshal(b, m, deterministic)
+}
+func (m *SetRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SetRequest.Merge(m, src)
+}
+func (m *SetRequest) XXX_Size() int {
+	return xxx_messageInfo_SetRequest.Size(m)
+}
+func (m *SetRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_SetRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SetRequest proto.InternalMessageInfo
+
+func (m *SetRequest) GetKey() []byte {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
+
+func (m *SetRequest) GetValue() []byte {
+	if m != nil {
+		return m.Value
+	}
+	return nil
+}
+
 type RemoteNode struct {
 	Id                   []byte   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Addr                 string   `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr,omitempty"`
+	Present              bool     `protobuf:"varint,3,opt,name=present,proto3" json:"present,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -145,7 +341,7 @@ func (m *RemoteNode) Reset()         { *m = RemoteNode{} }
 func (m *RemoteNode) String() string { return proto.CompactTextString(m) }
 func (*RemoteNode) ProtoMessage()    {}
 func (*RemoteNode) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ea80762c827c7836, []int{3}
+	return fileDescriptor_ea80762c827c7836, []int{8}
 }
 
 func (m *RemoteNode) XXX_Unmarshal(b []byte) error {
@@ -180,116 +376,50 @@ func (m *RemoteNode) GetAddr() string {
 	return ""
 }
 
-type RpcOkay struct {
-	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *RpcOkay) Reset()         { *m = RpcOkay{} }
-func (m *RpcOkay) String() string { return proto.CompactTextString(m) }
-func (*RpcOkay) ProtoMessage()    {}
-func (*RpcOkay) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ea80762c827c7836, []int{4}
-}
-
-func (m *RpcOkay) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RpcOkay.Unmarshal(m, b)
-}
-func (m *RpcOkay) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RpcOkay.Marshal(b, m, deterministic)
-}
-func (m *RpcOkay) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcOkay.Merge(m, src)
-}
-func (m *RpcOkay) XXX_Size() int {
-	return xxx_messageInfo_RpcOkay.Size(m)
-}
-func (m *RpcOkay) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcOkay.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RpcOkay proto.InternalMessageInfo
-
-func (m *RpcOkay) GetMessage() string {
+func (m *RemoteNode) GetPresent() bool {
 	if m != nil {
-		return m.Message
+		return m.Present
 	}
-	return ""
-}
-
-type IdReply struct {
-	Id                   []byte   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *IdReply) Reset()         { *m = IdReply{} }
-func (m *IdReply) String() string { return proto.CompactTextString(m) }
-func (*IdReply) ProtoMessage()    {}
-func (*IdReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ea80762c827c7836, []int{5}
-}
-
-func (m *IdReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_IdReply.Unmarshal(m, b)
-}
-func (m *IdReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_IdReply.Marshal(b, m, deterministic)
-}
-func (m *IdReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_IdReply.Merge(m, src)
-}
-func (m *IdReply) XXX_Size() int {
-	return xxx_messageInfo_IdReply.Size(m)
-}
-func (m *IdReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_IdReply.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_IdReply proto.InternalMessageInfo
-
-func (m *IdReply) GetId() []byte {
-	if m != nil {
-		return m.Id
-	}
-	return nil
+	return false
 }
 
 func init() {
-	proto.RegisterType((*RemoteId)(nil), "scale.RemoteId")
-	proto.RegisterType((*UpdateReq)(nil), "scale.UpdateReq")
-	proto.RegisterType((*RemoteQuery)(nil), "scale.RemoteQuery")
-	proto.RegisterType((*RemoteNode)(nil), "scale.RemoteNode")
-	proto.RegisterType((*RpcOkay)(nil), "scale.RpcOkay")
+	proto.RegisterType((*Empty)(nil), "scale.Empty")
+	proto.RegisterType((*Success)(nil), "scale.Success")
 	proto.RegisterType((*IdReply)(nil), "scale.IdReply")
+	proto.RegisterType((*RemoteId)(nil), "scale.RemoteId")
+	proto.RegisterType((*RemoteQuery)(nil), "scale.RemoteQuery")
+	proto.RegisterType((*GetRequest)(nil), "scale.GetRequest")
+	proto.RegisterType((*GetResponse)(nil), "scale.GetResponse")
+	proto.RegisterType((*SetRequest)(nil), "scale.SetRequest")
+	proto.RegisterType((*RemoteNode)(nil), "scale.RemoteNode")
 }
 
 func init() { proto.RegisterFile("proto/scale.proto", fileDescriptor_ea80762c827c7836) }
 
 var fileDescriptor_ea80762c827c7836 = []byte{
-	// 297 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x92, 0xcf, 0x4e, 0xf2, 0x40,
-	0x14, 0xc5, 0x81, 0xef, 0x83, 0xda, 0x4b, 0x6d, 0x64, 0x16, 0xa6, 0x92, 0x98, 0x90, 0x71, 0xc3,
-	0x46, 0x34, 0xa8, 0xd1, 0xad, 0x31, 0x81, 0xb0, 0x41, 0x9d, 0xc6, 0x07, 0xa8, 0xbd, 0xd7, 0x66,
-	0x62, 0xe9, 0xd4, 0xce, 0xb0, 0xe8, 0x43, 0xf8, 0xce, 0x86, 0xa9, 0x48, 0xb4, 0xc4, 0x3f, 0xbb,
-	0x7b, 0x7b, 0xee, 0x2f, 0xe7, 0x9c, 0x74, 0xa0, 0x97, 0x17, 0xca, 0xa8, 0x13, 0x1d, 0x47, 0x29,
-	0x8d, 0xec, 0xcc, 0xda, 0x76, 0xe1, 0x7d, 0xd8, 0x11, 0xb4, 0x50, 0x86, 0x66, 0xc8, 0x7c, 0x68,
-	0x49, 0x0c, 0x9a, 0x83, 0xe6, 0xd0, 0x13, 0x2d, 0x89, 0xbc, 0x0b, 0xee, 0x43, 0x8e, 0x91, 0x21,
-	0x41, 0x2f, 0xfc, 0x10, 0xba, 0xd5, 0xe1, 0xfd, 0x92, 0x8a, 0xb2, 0x76, 0x7b, 0x0a, 0x50, 0xc9,
-	0x73, 0x85, 0xf4, 0x55, 0x65, 0x0c, 0xfe, 0x47, 0x88, 0x45, 0xd0, 0x1a, 0x34, 0x87, 0xae, 0xb0,
-	0x33, 0x3f, 0x02, 0x47, 0xe4, 0xf1, 0xed, 0x73, 0x54, 0xb2, 0x00, 0x9c, 0x05, 0x69, 0x1d, 0x25,
-	0x64, 0x19, 0x57, 0xac, 0x57, 0x7e, 0x00, 0xce, 0x0c, 0x05, 0xe5, 0x69, 0xcd, 0x71, 0xfc, 0xfa,
-	0x0f, 0xda, 0xe1, 0xaa, 0x03, 0xbb, 0x00, 0x6f, 0x4a, 0x26, 0x5c, 0xc6, 0x31, 0x69, 0xad, 0x0a,
-	0xb6, 0x37, 0xaa, 0x8a, 0x7e, 0x84, 0xef, 0xf7, 0xde, 0xbf, 0x6c, 0x22, 0xf2, 0x06, 0xbb, 0x04,
-	0x7f, 0x4a, 0xe6, 0xae, 0x20, 0xa4, 0xbf, 0x81, 0xe7, 0xe0, 0x87, 0x3f, 0x81, 0xfe, 0x1a, 0xac,
-	0x2a, 0xf2, 0x06, 0x1b, 0x83, 0x17, 0x7e, 0x9f, 0xb2, 0xce, 0x5c, 0xc1, 0xee, 0x44, 0x66, 0xb8,
-	0x81, 0xd8, 0xa7, 0x3c, 0xf6, 0x57, 0x6c, 0xcf, 0x78, 0x0c, 0x9d, 0xb9, 0x32, 0xf2, 0xa9, 0x64,
-	0x75, 0x79, 0x8b, 0xd1, 0x35, 0xec, 0xdf, 0xa4, 0x4a, 0x93, 0x5e, 0xd5, 0x8a, 0x09, 0x65, 0x96,
-	0x4c, 0x64, 0x96, 0xd0, 0xef, 0x1d, 0x1f, 0x3b, 0xf6, 0x5d, 0x9d, 0xbd, 0x05, 0x00, 0x00, 0xff,
-	0xff, 0x1f, 0x7b, 0x3b, 0xce, 0x6c, 0x02, 0x00, 0x00,
+	// 327 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x92, 0xd1, 0x4e, 0xf2, 0x40,
+	0x10, 0x85, 0xa1, 0xfc, 0xa5, 0x65, 0xe0, 0x27, 0x32, 0xf1, 0x02, 0x9b, 0x68, 0xc8, 0x7a, 0xc3,
+	0x8d, 0x10, 0xc5, 0x0b, 0x5f, 0x40, 0x1b, 0x8c, 0x21, 0xda, 0x3e, 0x41, 0xed, 0x8e, 0x49, 0x63,
+	0x61, 0xeb, 0xee, 0xd6, 0xa4, 0x2f, 0xe7, 0xb3, 0x19, 0xb6, 0xc5, 0x22, 0x35, 0xc6, 0xbb, 0x99,
+	0x3d, 0xf3, 0x75, 0x26, 0xe7, 0x14, 0x46, 0x99, 0x14, 0x5a, 0xcc, 0x55, 0x1c, 0xa5, 0x34, 0x33,
+	0x35, 0xda, 0xa6, 0x61, 0x0e, 0xd8, 0xb7, 0xeb, 0x4c, 0x17, 0xac, 0x07, 0x4e, 0x98, 0xc7, 0x31,
+	0x29, 0xc5, 0x4e, 0xc0, 0x59, 0xf2, 0x80, 0xb2, 0xb4, 0xc0, 0x21, 0x58, 0x09, 0x1f, 0xb7, 0x27,
+	0xed, 0xe9, 0x20, 0xb0, 0x12, 0xce, 0x3c, 0x70, 0x03, 0x5a, 0x0b, 0x4d, 0x4b, 0xde, 0xd0, 0x4e,
+	0xa1, 0x5f, 0x6a, 0x4f, 0x39, 0xc9, 0x26, 0x7a, 0x06, 0xe0, 0x93, 0x0e, 0xe8, 0x2d, 0x27, 0xa5,
+	0xf1, 0x08, 0x3a, 0xaf, 0x54, 0x54, 0xf2, 0xb6, 0x64, 0xe7, 0xd0, 0x37, 0xba, 0xca, 0xc4, 0x46,
+	0x11, 0x1e, 0x83, 0xfd, 0x1e, 0xa5, 0x39, 0x55, 0x23, 0x65, 0xc3, 0xae, 0x01, 0xc2, 0x5f, 0x3e,
+	0x52, 0x53, 0xd6, 0x3e, 0x75, 0x0f, 0x50, 0x5e, 0xb6, 0x12, 0x9c, 0x0e, 0x0f, 0x43, 0x84, 0x7f,
+	0x11, 0xe7, 0xd2, 0x20, 0xbd, 0xc0, 0xd4, 0x38, 0x06, 0x27, 0x93, 0xa4, 0x68, 0xa3, 0xc7, 0x9d,
+	0x49, 0x7b, 0xea, 0x06, 0xbb, 0xf6, 0xea, 0xc3, 0x02, 0x3b, 0xdc, 0x5a, 0x87, 0x97, 0x30, 0xf0,
+	0x49, 0x57, 0xa6, 0x09, 0x89, 0x83, 0x59, 0xe9, 0xaf, 0xf1, 0xd3, 0x1b, 0x55, 0x5d, 0xbd, 0x98,
+	0xb5, 0x70, 0x01, 0x43, 0x9f, 0xf4, 0xa3, 0x24, 0x4e, 0x7f, 0x87, 0x6e, 0xe0, 0xff, 0x5d, 0xb2,
+	0xe1, 0xf5, 0x22, 0xfc, 0x36, 0x65, 0xdc, 0xfe, 0x99, 0xbc, 0x80, 0xee, 0x4a, 0xe8, 0xe4, 0xa5,
+	0xc0, 0xa6, 0xec, 0x0d, 0xab, 0xa7, 0x5d, 0xea, 0xdb, 0xeb, 0x5c, 0x9f, 0xf4, 0x83, 0x88, 0xa3,
+	0xf4, 0x0b, 0xa8, 0x23, 0xf3, 0x70, 0xff, 0xa9, 0x4c, 0x89, 0xb5, 0x70, 0x0e, 0x6e, 0x78, 0x08,
+	0xd5, 0x11, 0x35, 0xb7, 0x3c, 0x77, 0xcd, 0xff, 0xb7, 0xf8, 0x0c, 0x00, 0x00, 0xff, 0xff, 0x3a,
+	0x9e, 0x32, 0x90, 0x94, 0x02, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -304,13 +434,12 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ScaleClient interface {
-	GetSuccessor(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*RemoteNode, error)
-	GetPredecessor(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*RemoteNode, error)
-	SetPredecessor(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*RpcOkay, error)
-	SetSuccessor(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*RpcOkay, error)
+	GetSuccessor(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*RemoteNode, error)
+	GetPredecessor(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*RemoteNode, error)
 	FindSuccessor(ctx context.Context, in *RemoteQuery, opts ...grpc.CallOption) (*RemoteNode, error)
-	Notify(ctx context.Context, in *RemoteNode, opts ...grpc.CallOption) (*RpcOkay, error)
-	ClosestPrecedingFinger(ctx context.Context, in *RemoteQuery, opts ...grpc.CallOption) (*RemoteNode, error)
+	Notify(ctx context.Context, in *RemoteNode, opts ...grpc.CallOption) (*Success, error)
+	GetLocal(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
+	SetLocal(ctx context.Context, in *SetRequest, opts ...grpc.CallOption) (*Success, error)
 }
 
 type scaleClient struct {
@@ -321,7 +450,7 @@ func NewScaleClient(cc *grpc.ClientConn) ScaleClient {
 	return &scaleClient{cc}
 }
 
-func (c *scaleClient) GetSuccessor(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*RemoteNode, error) {
+func (c *scaleClient) GetSuccessor(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*RemoteNode, error) {
 	out := new(RemoteNode)
 	err := c.cc.Invoke(ctx, "/scale.Scale/GetSuccessor", in, out, opts...)
 	if err != nil {
@@ -330,27 +459,9 @@ func (c *scaleClient) GetSuccessor(ctx context.Context, in *UpdateReq, opts ...g
 	return out, nil
 }
 
-func (c *scaleClient) GetPredecessor(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*RemoteNode, error) {
+func (c *scaleClient) GetPredecessor(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*RemoteNode, error) {
 	out := new(RemoteNode)
 	err := c.cc.Invoke(ctx, "/scale.Scale/GetPredecessor", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *scaleClient) SetPredecessor(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*RpcOkay, error) {
-	out := new(RpcOkay)
-	err := c.cc.Invoke(ctx, "/scale.Scale/SetPredecessor", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *scaleClient) SetSuccessor(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*RpcOkay, error) {
-	out := new(RpcOkay)
-	err := c.cc.Invoke(ctx, "/scale.Scale/SetSuccessor", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -366,8 +477,8 @@ func (c *scaleClient) FindSuccessor(ctx context.Context, in *RemoteQuery, opts .
 	return out, nil
 }
 
-func (c *scaleClient) Notify(ctx context.Context, in *RemoteNode, opts ...grpc.CallOption) (*RpcOkay, error) {
-	out := new(RpcOkay)
+func (c *scaleClient) Notify(ctx context.Context, in *RemoteNode, opts ...grpc.CallOption) (*Success, error) {
+	out := new(Success)
 	err := c.cc.Invoke(ctx, "/scale.Scale/Notify", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -375,9 +486,18 @@ func (c *scaleClient) Notify(ctx context.Context, in *RemoteNode, opts ...grpc.C
 	return out, nil
 }
 
-func (c *scaleClient) ClosestPrecedingFinger(ctx context.Context, in *RemoteQuery, opts ...grpc.CallOption) (*RemoteNode, error) {
-	out := new(RemoteNode)
-	err := c.cc.Invoke(ctx, "/scale.Scale/ClosestPrecedingFinger", in, out, opts...)
+func (c *scaleClient) GetLocal(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error) {
+	out := new(GetResponse)
+	err := c.cc.Invoke(ctx, "/scale.Scale/GetLocal", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *scaleClient) SetLocal(ctx context.Context, in *SetRequest, opts ...grpc.CallOption) (*Success, error) {
+	out := new(Success)
+	err := c.cc.Invoke(ctx, "/scale.Scale/SetLocal", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -386,39 +506,35 @@ func (c *scaleClient) ClosestPrecedingFinger(ctx context.Context, in *RemoteQuer
 
 // ScaleServer is the server API for Scale service.
 type ScaleServer interface {
-	GetSuccessor(context.Context, *UpdateReq) (*RemoteNode, error)
-	GetPredecessor(context.Context, *UpdateReq) (*RemoteNode, error)
-	SetPredecessor(context.Context, *UpdateReq) (*RpcOkay, error)
-	SetSuccessor(context.Context, *UpdateReq) (*RpcOkay, error)
+	GetSuccessor(context.Context, *Empty) (*RemoteNode, error)
+	GetPredecessor(context.Context, *Empty) (*RemoteNode, error)
 	FindSuccessor(context.Context, *RemoteQuery) (*RemoteNode, error)
-	Notify(context.Context, *RemoteNode) (*RpcOkay, error)
-	ClosestPrecedingFinger(context.Context, *RemoteQuery) (*RemoteNode, error)
+	Notify(context.Context, *RemoteNode) (*Success, error)
+	GetLocal(context.Context, *GetRequest) (*GetResponse, error)
+	SetLocal(context.Context, *SetRequest) (*Success, error)
 }
 
 // UnimplementedScaleServer can be embedded to have forward compatible implementations.
 type UnimplementedScaleServer struct {
 }
 
-func (*UnimplementedScaleServer) GetSuccessor(ctx context.Context, req *UpdateReq) (*RemoteNode, error) {
+func (*UnimplementedScaleServer) GetSuccessor(ctx context.Context, req *Empty) (*RemoteNode, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSuccessor not implemented")
 }
-func (*UnimplementedScaleServer) GetPredecessor(ctx context.Context, req *UpdateReq) (*RemoteNode, error) {
+func (*UnimplementedScaleServer) GetPredecessor(ctx context.Context, req *Empty) (*RemoteNode, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPredecessor not implemented")
-}
-func (*UnimplementedScaleServer) SetPredecessor(ctx context.Context, req *UpdateReq) (*RpcOkay, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetPredecessor not implemented")
-}
-func (*UnimplementedScaleServer) SetSuccessor(ctx context.Context, req *UpdateReq) (*RpcOkay, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetSuccessor not implemented")
 }
 func (*UnimplementedScaleServer) FindSuccessor(ctx context.Context, req *RemoteQuery) (*RemoteNode, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FindSuccessor not implemented")
 }
-func (*UnimplementedScaleServer) Notify(ctx context.Context, req *RemoteNode) (*RpcOkay, error) {
+func (*UnimplementedScaleServer) Notify(ctx context.Context, req *RemoteNode) (*Success, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Notify not implemented")
 }
-func (*UnimplementedScaleServer) ClosestPrecedingFinger(ctx context.Context, req *RemoteQuery) (*RemoteNode, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ClosestPrecedingFinger not implemented")
+func (*UnimplementedScaleServer) GetLocal(ctx context.Context, req *GetRequest) (*GetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLocal not implemented")
+}
+func (*UnimplementedScaleServer) SetLocal(ctx context.Context, req *SetRequest) (*Success, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetLocal not implemented")
 }
 
 func RegisterScaleServer(s *grpc.Server, srv ScaleServer) {
@@ -426,7 +542,7 @@ func RegisterScaleServer(s *grpc.Server, srv ScaleServer) {
 }
 
 func _Scale_GetSuccessor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateReq)
+	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -438,13 +554,13 @@ func _Scale_GetSuccessor_Handler(srv interface{}, ctx context.Context, dec func(
 		FullMethod: "/scale.Scale/GetSuccessor",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ScaleServer).GetSuccessor(ctx, req.(*UpdateReq))
+		return srv.(ScaleServer).GetSuccessor(ctx, req.(*Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Scale_GetPredecessor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateReq)
+	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -456,43 +572,7 @@ func _Scale_GetPredecessor_Handler(srv interface{}, ctx context.Context, dec fun
 		FullMethod: "/scale.Scale/GetPredecessor",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ScaleServer).GetPredecessor(ctx, req.(*UpdateReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Scale_SetPredecessor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ScaleServer).SetPredecessor(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/scale.Scale/SetPredecessor",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ScaleServer).SetPredecessor(ctx, req.(*UpdateReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Scale_SetSuccessor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ScaleServer).SetSuccessor(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/scale.Scale/SetSuccessor",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ScaleServer).SetSuccessor(ctx, req.(*UpdateReq))
+		return srv.(ScaleServer).GetPredecessor(ctx, req.(*Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -533,20 +613,38 @@ func _Scale_Notify_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Scale_ClosestPrecedingFinger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoteQuery)
+func _Scale_GetLocal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ScaleServer).ClosestPrecedingFinger(ctx, in)
+		return srv.(ScaleServer).GetLocal(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/scale.Scale/ClosestPrecedingFinger",
+		FullMethod: "/scale.Scale/GetLocal",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ScaleServer).ClosestPrecedingFinger(ctx, req.(*RemoteQuery))
+		return srv.(ScaleServer).GetLocal(ctx, req.(*GetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Scale_SetLocal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ScaleServer).SetLocal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/scale.Scale/SetLocal",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ScaleServer).SetLocal(ctx, req.(*SetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -564,14 +662,6 @@ var _Scale_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Scale_GetPredecessor_Handler,
 		},
 		{
-			MethodName: "SetPredecessor",
-			Handler:    _Scale_SetPredecessor_Handler,
-		},
-		{
-			MethodName: "SetSuccessor",
-			Handler:    _Scale_SetSuccessor_Handler,
-		},
-		{
 			MethodName: "FindSuccessor",
 			Handler:    _Scale_FindSuccessor_Handler,
 		},
@@ -580,8 +670,12 @@ var _Scale_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Scale_Notify_Handler,
 		},
 		{
-			MethodName: "ClosestPrecedingFinger",
-			Handler:    _Scale_ClosestPrecedingFinger_Handler,
+			MethodName: "GetLocal",
+			Handler:    _Scale_GetLocal_Handler,
+		},
+		{
+			MethodName: "SetLocal",
+			Handler:    _Scale_SetLocal_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

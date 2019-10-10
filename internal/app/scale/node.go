@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	pb "github.com/msmedes/scale/internal/app/scale/proto"
 	"go.uber.org/zap"
 )
+
+// StabilizeInterval how often to execute stabilization
+const StabilizeInterval = 10
 
 // Node main node class
 type Node struct {
@@ -36,12 +38,26 @@ func NewNode(addr string, logger *zap.SugaredLogger) *Node {
 	node.fingerTable = NewFingerTable(M, node.ID)
 	node.successor = &RemoteNode{ID: node.ID, Addr: node.Addr}
 
-	fingerTicker := time.NewTicker(10 * time.Second)
-	go node.fixFingerTable(fingerTicker)
-	stabilizeTicker := time.NewTicker(10 * time.Second)
-	go node.stabilize(stabilizeTicker)
-
 	return node
+}
+
+// StabilizationStart run a process that periodically makes sure the finger table
+// is up to date and accurate
+func (node *Node) StabilizationStart() {
+	next := 0
+	ticker := time.NewTicker(StabilizeInterval * time.Second)
+
+	for {
+		select {
+		case <-ticker.C:
+			next = node.fixNextFinger(next)
+			node.stabilize()
+
+			if next >= M {
+				next = 0
+			}
+		}
+	}
 }
 
 // Join join an existing network via another node
@@ -79,16 +95,12 @@ func (node *Node) Join(addr string) {
 
 // FindSuccessor returns the successor for this node
 func (node *Node) FindSuccessor(id Key) *RemoteNode {
-	return node.findSuccessor(id)
-
-}
-
-func (node *Node) findSuccessor(id Key) *RemoteNode {
 	if BetweenRightInclusive(id, node.ID, node.successor.ID) {
 		return node.successor
 	}
 
 	closestPrecedingID := node.closestPrecedingNode(id)
+
 	if bytes.Equal(closestPrecedingID[:], node.ID[:]) {
 		return &RemoteNode{ID: node.ID, Addr: node.Addr}
 	}
@@ -122,17 +134,17 @@ func (node *Node) closestPrecedingNode(id Key) Key {
 			return finger.ID
 		}
 	}
+
 	return node.ID
 }
 
 // GetPredecessor returns the node's predecessor
-func (node *Node) GetPredecessor() *RemoteNode {
+func (node *Node) GetPredecessor() (*RemoteNode, error) {
 	if node.predecessor != nil {
-		return node.predecessor
+		return node.predecessor, nil
 	}
-	// If there's no predecessor send back an empty RemoteNode, I guess
-	node.logger.Info("Predecessor not set")
-	return &RemoteNode{}
+
+	return nil, nil
 }
 
 // GetSuccessor retunrs the node's successor
@@ -140,8 +152,8 @@ func (node *Node) GetSuccessor() (*RemoteNode, error) {
 	if node.successor != nil {
 		return node.successor, nil
 	}
-	node.logger.Info("Successor not set")
-	return nil, errors.New("No successor found")
+
+	return nil, errors.New("no successor found")
 }
 
 // Shutdown leave the network
@@ -149,54 +161,49 @@ func (node *Node) Shutdown() {
 	node.logger.Info("exiting")
 }
 
-func (node *Node) stabilize(ticker *time.Ticker) {
-	for {
-		select {
-		case <-ticker.C:
-			if bytes.Equal(node.successor.ID[:], node.ID[:]) {
-				continue
-			}
-			succPredecessor, err := node.successor.RPC.GetPredecessor(context.Background(), &pb.UpdateReq{})
-
-			if err != nil {
-				node.logger.Error(err)
-				node.logger.Fatalf("error retrieving predecessor from successor %s", KeyToString(node.successor.ID))
-			}
-
-			// The successor may not yet have a predecessor, meaning it has not
-			// yet had a chance to update it's predecessor.  In that case we
-			// notify the successor that we believe we are its predecessor.
-			if succPredecessor.Addr != "" && Between(ByteArrayToKey(succPredecessor.Id), node.ID, node.successor.ID) {
-				node.successor = NewRemoteNode(succPredecessor.Addr, node)
-				node.logger.Infof("successor set to %s", KeyToString(node.successor.ID))
-			}
-			// tell the successor that node is the predecessor now
-			node.successor.RPC.Notify(context.Background(), &pb.RemoteNode{Id: node.ID[:], Addr: node.Addr})
-		}
+func (node *Node) stabilize() {
+	if bytes.Equal(node.successor.ID[:], node.ID[:]) {
+		return
 	}
 
+	succPredecessor, err := node.successor.RPC.GetPredecessor(context.Background(), &pb.Empty{})
+
+	if err != nil {
+		node.logger.Error(err)
+		node.logger.Fatalf("error retrieving predecessor from successor %s", KeyToString(node.successor.ID))
+	}
+
+	// The successor may not yet have a predecessor, meaning it has not
+	// yet had a chance to update it's predecessor.  In that case we
+	// notify the successor that we believe we are its predecessor.
+	if succPredecessor.Present && Between(ByteArrayToKey(succPredecessor.Id), node.ID, node.successor.ID) {
+		node.successor = NewRemoteNode(succPredecessor.Addr, node)
+		node.logger.Infof("successor set to %s", KeyToString(node.successor.ID))
+	}
+
+	// tell the successor that node is the predecessor now
+	node.successor.RPC.Notify(context.Background(), &pb.RemoteNode{Id: node.ID[:], Addr: node.Addr})
 }
 
 // Notify is called when another node thinks it is our predecessor
-func (node *Node) Notify(id Key, addr string) string {
+func (node *Node) Notify(id Key, addr string) error {
 	if node.predecessor == nil || Between(id, node.predecessor.ID, node.ID) {
 		node.predecessor = NewRemoteNode(addr, node)
 		// Then we transfer keys
 		node.logger.Infof("predecessor switched to %s", KeyToString(id))
-		return fmt.Sprintf("predecessor switched to %s", KeyToString(id))
+
+		return nil
 	}
-	return fmt.Sprintf("predecessor is already set")
+
+	node.logger.Info("predecessor is already set")
+
+	return nil
 }
 
-func (node *Node) fixFingerTable(ticker *time.Ticker) {
-	next := 0
-	for {
-		select {
-		case <-ticker.C:
-			next = node.fixNextFinger(next)
-			if next > M {
-				next = 0
-			}
-		}
-	}
+func (node *Node) fixNextFinger(next int) int {
+	nextHash := fingerMath(node.ID[:], next, M)
+	successor := node.FindSuccessor(ByteArrayToKey(nextHash))
+	finger := &finger{ID: successor.ID}
+	node.fingerTable[next] = finger
+	return next + 1
 }
