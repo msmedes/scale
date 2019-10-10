@@ -26,12 +26,11 @@ type Node struct {
 }
 
 // NewNode create a new node
-func NewNode(addr string, logger *zap.SugaredLogger) *Node {
+func NewNode(addr string) *Node {
 	node := &Node{
 		ID:                GenerateKey(addr),
 		Addr:              addr,
 		store:             NewStore(),
-		logger:            logger,
 		remoteConnections: make(map[Key]*RemoteNode),
 	}
 

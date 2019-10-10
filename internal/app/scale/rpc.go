@@ -99,6 +99,16 @@ func (r *RPC) Notify(ctx context.Context, in *pb.RemoteNode) (*pb.Success, error
 	return &pb.Success{}, nil
 }
 
+// GetNodeMetadata return metadata about this node
+func (r *RPC) GetNodeMetadata(context.Context, *pb.Empty) (*pb.NodeMetadata, error) {
+	meta := &pb.NodeMetadata{
+		Id:   r.node.ID[:],
+		Addr: r.node.Addr,
+	}
+
+	return meta, nil
+}
+
 // GetScaleClient returns a ScaleClient from the node to a specific remote Node.
 // I don't really know where to put this.
 func GetScaleClient(addr string, node *Node) pb.ScaleClient {

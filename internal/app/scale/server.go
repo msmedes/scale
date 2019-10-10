@@ -20,37 +20,33 @@ var (
 // server to accept requests from remote nodes and invoke methods on the node object
 // also, fire up the background process to periodically stabilize the node's finger table
 func ServerListen() {
-	logger, err := zap.NewDevelopment()
-
-	defer logger.Sync()
+	node := NewNode(addr)
+	logger, err := zap.NewDevelopment(zap.Fields(zap.String("node", KeyToString(node.ID))))
 
 	if err != nil {
 		log.Fatalf("failed to init logger: %v", err)
 	}
 
 	sugar := logger.Sugar()
-	node := NewNode(addr, sugar)
+	node.logger = sugar
 	rpc := NewRPC(node, logger)
 	graphql := NewGraphQL(webAddr, sugar, rpc)
-
-	defer node.Shutdown()
-
-	go graphql.ServerListen()
-	sugar.Infof("listening - graphql: %s", webAddr)
-
-	go rpc.ServerListen()
-	sugar.Infof("listening - internode: %s", addr)
-
-	go node.StabilizationStart()
 
 	if len(join) > 0 {
 		node.Join(join)
 	}
 
-	sugar.Infof("node.id: %s", KeyToString(node.ID))
+	defer node.Shutdown()
+	defer logger.Sync()
 
-	for {
-	}
+	go node.StabilizationStart()
+	go graphql.ServerListen()
+	go rpc.ServerListen()
+
+	sugar.Infof("listening - graphql: %s", webAddr)
+	sugar.Infof("listening - internode: %s", addr)
+
+	select {}
 }
 
 func getEnv(key string, defaultVal string) string {
