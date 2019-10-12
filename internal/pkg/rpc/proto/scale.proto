@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package scale;
+
+message Empty {}
+message Success {}
+message RemoteId { bytes id = 1; }
+message RemoteQuery { bytes id = 1; }
+message GetRequest { bytes key = 1; }
+message GetResponse { bytes value = 1; }
+
+message SetRequest {
+  bytes key = 1;
+  bytes value = 2;
+}
+
+message NodeMetadata {
+  bytes id = 1;
+  string addr = 2;
+  bytes predecessorId = 3;
+  string predecessorAddr = 4;
+  bytes successorId = 5;
+  string successorAddr = 6;
+}
+
+message RemoteNode {
+  bytes id = 1;
+  string addr = 2;
+  bool present = 3;
+}
+
+service Scale {
+  rpc GetSuccessor(Empty) returns (RemoteNode) {}
+  rpc GetPredecessor(Empty) returns (RemoteNode) {}
+  rpc FindSuccessor(RemoteQuery) returns (RemoteNode) {}
+  rpc Notify(RemoteNode) returns (Success) {}
+  rpc GetLocal(GetRequest) returns (GetResponse) {}
+  rpc SetLocal(SetRequest) returns (Success) {}
+  rpc Get(GetRequest) returns (GetResponse) {}
+  rpc Set(SetRequest) returns (Success) {}
+  rpc GetNodeMetadata(Empty) returns (NodeMetadata) {}
+}
