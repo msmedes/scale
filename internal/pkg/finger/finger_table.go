@@ -1,30 +1,34 @@
-package scale
+package finger
 
 import (
 	"bytes"
 	"fmt"
 	"math/big"
+
+	"github.com/msmedes/scale/internal/pkg/keyspace"
 )
 
-// FingerTable contains nodes in network for lookups
-type FingerTable []*finger
+// Table contains nodes in network for lookups
+type Table []*Finger
 
-type finger struct {
-	ID Key
+// Finger finger
+type Finger struct {
+	ID keyspace.Key
 }
 
 // NewFingerTable create and populate a finger table
-func NewFingerTable(m int, ID Key) FingerTable {
-	ft := make([]*finger, m)
+func NewFingerTable(m int, ID keyspace.Key) Table {
+	ft := make([]*Finger, m)
 
 	for i := range ft {
-		ft[i] = &finger{ID: ID}
+		ft[i] = &Finger{ID: ID}
 	}
 
 	return ft
 }
 
-func fingerMath(n []byte, i int, m int) []byte {
+// Math fingermath
+func Math(n []byte, i int, m int) []byte {
 	twoExp := big.NewInt(2)
 	twoExp.Exp(twoExp, big.NewInt(int64(i)), nil)
 	mExp := big.NewInt(2)
@@ -38,11 +42,11 @@ func fingerMath(n []byte, i int, m int) []byte {
 	return res.Bytes()
 }
 
-func (f finger) String() string {
-	return fmt.Sprintf("%s", KeyToString(f.ID))
+func (f Finger) String() string {
+	return fmt.Sprintf("%s", keyspace.KeyToString(f.ID))
 }
 
-func (ft FingerTable) String() string {
+func (ft Table) String() string {
 	var buf bytes.Buffer
 
 	buf.WriteString("\n")

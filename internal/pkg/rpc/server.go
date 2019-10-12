@@ -1,51 +1,61 @@
-package scale
+package rpc
 
 import (
 	"context"
-	"log"
 	"net"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
-	pb "github.com/msmedes/scale/internal/app/scale/proto"
+	"github.com/msmedes/scale/internal/pkg/keyspace"
+	pb "github.com/msmedes/scale/internal/pkg/rpc/proto"
+	"github.com/msmedes/scale/internal/pkg/scale"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
 // RPC rpc route handler
 type RPC struct {
-	node   *Node
+	node   scale.Node
+	sugar  *zap.SugaredLogger
 	logger *zap.Logger
+	addr   string
 }
 
-// NewRPC create a new RPC with the given node
-func NewRPC(node *Node, logger *zap.Logger) *RPC {
+// NewRPC create a new rpc
+func NewRPC(node scale.Node, logger *zap.Logger, sugar *zap.SugaredLogger, addr string) *RPC {
 	return &RPC{
-		node:   node,
 		logger: logger,
+		sugar:  sugar,
+		node:   node,
+		addr:   addr,
 	}
 }
 
-// GetLocal RPC wrapper for node.store.Get
+// GetLocal rpc wrapper for node.store.Get
 func (r *RPC) GetLocal(ctx context.Context, in *pb.GetRequest) (*pb.GetResponse, error) {
 	res := &pb.GetResponse{
-		Value: r.node.store.Get(ByteArrayToKey(in.Key)),
+		Value: r.node.GetLocal(keyspace.ByteArrayToKey(in.GetKey())),
 	}
 
 	return res, nil
 }
 
-// SetLocal RPC wrapper for node.store.Set
+// SetLocal rpc wrapper for node.store.Set
 func (r *RPC) SetLocal(ctx context.Context, in *pb.SetRequest) (*pb.Success, error) {
-	r.node.store.Set(ByteArrayToKey(in.Key), in.Value)
+	r.node.SetLocal(keyspace.ByteArrayToKey(in.GetKey()), in.GetValue())
 
 	return &pb.Success{}, nil
 }
 
-// FindSuccessor RPC wrapper for node.FindSuccessor
+// FindSuccessor rpc wrapper for node.FindSuccessor
 func (r *RPC) FindSuccessor(ctx context.Context, in *pb.RemoteQuery) (*pb.RemoteNode, error) {
-	successor := r.node.FindSuccessor(ByteArrayToKey(in.Id))
-	res := &pb.RemoteNode{Id: successor.ID[:], Addr: successor.Addr}
+	successor, _ := r.node.FindSuccessor(keyspace.ByteArrayToKey(in.Id))
+	id := successor.GetID()
+
+	res := &pb.RemoteNode{
+		Id:   id[:],
+		Addr: successor.GetAddr(),
+	}
 
 	return res, nil
 }
@@ -58,9 +68,11 @@ func (r *RPC) GetSuccessor(context.Context, *pb.Empty) (*pb.RemoteNode, error) {
 		return nil, err
 	}
 
+	id := successor.GetID()
+
 	res := &pb.RemoteNode{
-		Id:   successor.ID[:],
-		Addr: successor.Addr,
+		Id:   id[:],
+		Addr: successor.GetAddr(),
 	}
 
 	return res, nil
@@ -78,9 +90,11 @@ func (r *RPC) GetPredecessor(context.Context, *pb.Empty) (*pb.RemoteNode, error)
 		return empty, nil
 	}
 
+	id := predecessor.GetID()
+
 	res := &pb.RemoteNode{
-		Id:      predecessor.ID[:],
-		Addr:    predecessor.Addr,
+		Id:      id[:],
+		Addr:    predecessor.GetAddr(),
 		Present: true,
 	}
 
@@ -90,7 +104,7 @@ func (r *RPC) GetPredecessor(context.Context, *pb.Empty) (*pb.RemoteNode, error)
 // Notify tells a node that another node (it thinks) it's its predecessor
 // man english is a weird language
 func (r *RPC) Notify(ctx context.Context, in *pb.RemoteNode) (*pb.Success, error) {
-	err := r.node.Notify(ByteArrayToKey(in.Id), in.Addr)
+	err := r.node.Notify(keyspace.ByteArrayToKey(in.Id), in.Addr)
 
 	if err != nil {
 		return nil, err
@@ -101,41 +115,46 @@ func (r *RPC) Notify(ctx context.Context, in *pb.RemoteNode) (*pb.Success, error
 
 // GetNodeMetadata return metadata about this node
 func (r *RPC) GetNodeMetadata(context.Context, *pb.Empty) (*pb.NodeMetadata, error) {
+	id := r.node.GetID()
+
 	meta := &pb.NodeMetadata{
-		Id:   r.node.ID[:],
-		Addr: r.node.Addr,
+		Id:   id[:],
+		Addr: r.node.GetAddr(),
+	}
+
+	predecessor, err := r.node.GetPredecessor()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if predecessor != nil {
+		predID := predecessor.GetID()
+		meta.PredecessorId = predID[:]
+		meta.PredecessorAddr = predecessor.GetAddr()
+	}
+
+	successor, err := r.node.GetSuccessor()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if successor != nil {
+		succID := successor.GetID()
+		meta.SuccessorId = succID[:]
+		meta.SuccessorAddr = successor.GetAddr()
 	}
 
 	return meta, nil
 }
 
-// GetScaleClient returns a ScaleClient from the node to a specific remote Node.
-// I don't really know where to put this.
-func GetScaleClient(addr string, node *Node) pb.ScaleClient {
-	// Do we already have a connection
-	// dial away
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
-
-	if err != nil {
-		node.logger.Fatal(err)
-	}
-
-	// Create a new client
-	client := pb.NewScaleClient(conn)
-
-	if err != nil {
-		node.logger.Fatal(err)
-	}
-
-	return client
-}
-
 // ServerListen start up the server
 func (r *RPC) ServerListen() {
-	server, err := net.Listen("tcp", addr)
+	server, err := net.Listen("tcp", r.addr)
 
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		r.sugar.Fatalf("failed to listen: %v", err)
 	}
 
 	grpcServer := grpc.NewServer(

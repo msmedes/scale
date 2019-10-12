@@ -17,6 +17,10 @@ message SetRequest {
 message NodeMetadata {
   bytes id = 1;
   string addr = 2;
+  bytes predecessorId = 3;
+  string predecessorAddr = 4;
+  bytes successorId = 5;
+  string successorAddr = 6;
 }
 
 message RemoteNode {

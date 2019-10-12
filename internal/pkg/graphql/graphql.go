@@ -1,4 +1,4 @@
-package scale
+package graphql
 
 import (
 	"context"
@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/graphql-go/graphql"
-	pb "github.com/msmedes/scale/internal/app/scale/proto"
+	gql "github.com/graphql-go/graphql"
+	"github.com/msmedes/scale/internal/pkg/rpc"
+	pb "github.com/msmedes/scale/internal/pkg/rpc/proto"
 	"go.uber.org/zap"
 )
 
@@ -15,29 +16,20 @@ type reqBody struct {
 	Query string `json:"query"`
 }
 
-type nodeMetadata struct {
-	ID   string `json:"id"`
-	Addr string `json:"addr"`
-}
-
-type metadata struct {
-	Node *nodeMetadata `json:"nodeMetadata"`
-}
-
 // GraphQL GraphQL object
 type GraphQL struct {
 	addr   string
-	schema graphql.Schema
+	schema gql.Schema
 	logger *zap.SugaredLogger
-	rpc    *RPC
+	rpc    *rpc.RPC
 }
 
 // NewGraphQL Instantiate new GraphQL instance
-func NewGraphQL(addr string, logger *zap.SugaredLogger, rpc *RPC) *GraphQL {
+func NewGraphQL(addr string, logger *zap.SugaredLogger, r *rpc.RPC) *GraphQL {
 	obj := &GraphQL{
 		addr:   addr,
 		logger: logger,
-		rpc:    rpc,
+		rpc:    r,
 	}
 
 	obj.buildSchema()
@@ -68,8 +60,8 @@ func (g *GraphQL) ServerListen() {
 	}
 }
 
-func (g *GraphQL) execute(query string) *graphql.Result {
-	result := graphql.Do(graphql.Params{
+func (g *GraphQL) execute(query string) *gql.Result {
+	result := gql.Do(gql.Params{
 		Schema:        g.schema,
 		RequestString: query,
 	})
@@ -82,34 +74,46 @@ func (g *GraphQL) execute(query string) *graphql.Result {
 }
 
 func (g *GraphQL) buildSchema() {
-	nodeMetadataType := graphql.NewObject(
-		graphql.ObjectConfig{
-			Name: "NodeMetadata",
-			Fields: graphql.Fields{
-				"id":   &graphql.Field{Type: graphql.String},
-				"addr": &graphql.Field{Type: graphql.String},
+	remoteNodeMetadataType := gql.NewObject(
+		gql.ObjectConfig{
+			Name: "RemoteNodeMetadata",
+			Fields: gql.Fields{
+				"id":   &gql.Field{Type: gql.String},
+				"addr": &gql.Field{Type: gql.String},
 			},
 		},
 	)
 
-	metadataType := graphql.NewObject(
-		graphql.ObjectConfig{
+	nodeMetadataType := gql.NewObject(
+		gql.ObjectConfig{
+			Name: "NodeMetadata",
+			Fields: gql.Fields{
+				"id":          &gql.Field{Type: gql.String},
+				"addr":        &gql.Field{Type: gql.String},
+				"predecessor": &gql.Field{Type: remoteNodeMetadataType},
+				"successor":   &gql.Field{Type: remoteNodeMetadataType},
+			},
+		},
+	)
+
+	metadataType := gql.NewObject(
+		gql.ObjectConfig{
 			Name: "Metadata",
-			Fields: graphql.Fields{
-				"node": &graphql.Field{
+			Fields: gql.Fields{
+				"node": &gql.Field{
 					Type: nodeMetadataType,
 				},
 			},
 		},
 	)
 
-	queryType := graphql.NewObject(
-		graphql.ObjectConfig{
+	queryType := gql.NewObject(
+		gql.ObjectConfig{
 			Name: "Query",
-			Fields: graphql.Fields{
-				"metadata": &graphql.Field{
+			Fields: gql.Fields{
+				"metadata": &gql.Field{
 					Type: metadataType,
-					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(p gql.ResolveParams) (interface{}, error) {
 						nodeMeta, err := g.rpc.GetNodeMetadata(context.Background(), &pb.Empty{})
 
 						if err != nil {
@@ -120,18 +124,26 @@ func (g *GraphQL) buildSchema() {
 							Node: &nodeMetadata{
 								ID:   fmt.Sprintf("%x", nodeMeta.GetId()),
 								Addr: nodeMeta.GetAddr(),
+								Predecessor: remoteNodeMetadata{
+									ID:   fmt.Sprintf("%x", nodeMeta.GetPredecessorId()),
+									Addr: nodeMeta.GetPredecessorAddr(),
+								},
+								Successor: remoteNodeMetadata{
+									ID:   fmt.Sprintf("%x", nodeMeta.GetSuccessorId()),
+									Addr: nodeMeta.GetSuccessorAddr(),
+								},
 							},
 						}
 
 						return meta, nil
 					},
 				},
-				"get": &graphql.Field{
-					Type: graphql.String,
-					Args: graphql.FieldConfigArgument{
-						"key": &graphql.ArgumentConfig{Type: graphql.String},
+				"get": &gql.Field{
+					Type: gql.String,
+					Args: gql.FieldConfigArgument{
+						"key": &gql.ArgumentConfig{Type: gql.String},
 					},
-					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(p gql.ResolveParams) (interface{}, error) {
 						key := []byte(p.Args["key"].(string))
 
 						res, err := g.rpc.GetLocal(context.Background(), &pb.GetRequest{Key: key})
@@ -147,21 +159,21 @@ func (g *GraphQL) buildSchema() {
 		},
 	)
 
-	mutationType := graphql.NewObject(
-		graphql.ObjectConfig{
+	mutationType := gql.NewObject(
+		gql.ObjectConfig{
 			Name: "Mutation",
-			Fields: graphql.Fields{
-				"set": &graphql.Field{
-					Type: graphql.Int,
-					Args: graphql.FieldConfigArgument{
-						"key": &graphql.ArgumentConfig{
-							Type: graphql.String,
+			Fields: gql.Fields{
+				"set": &gql.Field{
+					Type: gql.Int,
+					Args: gql.FieldConfigArgument{
+						"key": &gql.ArgumentConfig{
+							Type: gql.String,
 						},
-						"value": &graphql.ArgumentConfig{
-							Type: graphql.String,
+						"value": &gql.ArgumentConfig{
+							Type: gql.String,
 						},
 					},
-					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(p gql.ResolveParams) (interface{}, error) {
 						key := []byte(p.Args["key"].(string))
 						val := []byte(p.Args["value"].(string))
 
@@ -178,8 +190,8 @@ func (g *GraphQL) buildSchema() {
 		},
 	)
 
-	schema, _ := graphql.NewSchema(
-		graphql.SchemaConfig{
+	schema, _ := gql.NewSchema(
+		gql.SchemaConfig{
 			Query:    queryType,
 			Mutation: mutationType,
 		},
