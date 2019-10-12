@@ -112,6 +112,7 @@ func (node *Node) Join(addr string) {
 	node.successor = remoteNode
 	node.Logger.Infof("found successor: %s", keyspace.KeyToString(node.successor.ID))
 	node.Logger.Info("joined network")
+	node.stabilize()
 }
 
 // GetLocal return a value stored on this node
