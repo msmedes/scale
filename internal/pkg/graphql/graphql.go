@@ -155,7 +155,7 @@ func (g *GraphQL) buildSchema() {
 					Resolve: func(p gql.ResolveParams) (interface{}, error) {
 						key := []byte(p.Args["key"].(string))
 
-						res, err := g.rpc.GetLocal(context.Background(), &pb.GetRequest{Key: key})
+						res, err := g.rpc.Get(context.Background(), &pb.GetRequest{Key: key})
 
 						if err != nil {
 							return nil, err
@@ -182,7 +182,7 @@ func (g *GraphQL) buildSchema() {
 						key := []byte(p.Args["key"].(string))
 						val := []byte(p.Args["value"].(string))
 
-						_, err := g.rpc.SetLocal(context.Background(), &pb.SetRequest{Key: key, Value: val})
+						_, err := g.rpc.Set(context.Background(), &pb.SetRequest{Key: key, Value: val})
 
 						if err != nil {
 							return nil, err

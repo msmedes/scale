@@ -12,10 +12,10 @@ type RemoteNode interface {
 
 // Node represents the current node and operations it is responsible for
 type Node interface {
-	Get(keyspace.Key) []byte
-	Set(keyspace.Key, []byte)
-	GetLocal(keyspace.Key) []byte
-	SetLocal(keyspace.Key, []byte)
+	Get(keyspace.Key) ([]byte, error)
+	Set(keyspace.Key, []byte) error
+	GetLocal(keyspace.Key) ([]byte, error)
+	SetLocal(keyspace.Key, []byte) error
 	Notify(keyspace.Key, string) error
 	FindSuccessor(keyspace.Key) (RemoteNode, error)
 	GetSuccessor() (RemoteNode, error)
