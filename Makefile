@@ -12,7 +12,7 @@ serve:
 	@go run cmd/scale/main.go
 
 codegen:
-	@protoc -I internal/app/scale internal/app/scale/proto/scale.proto --go_out=plugins=grpc:internal/app/scale
+	@protoc -I internal/pkg/rpc internal/pkg/rpc/proto/scale.proto --go_out=plugins=grpc:internal/pkg/rpc
 
 docker.build:
 	@docker build -t msmedes/scale:dev .

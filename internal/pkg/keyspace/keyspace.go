@@ -1,4 +1,4 @@
-package scale
+package keyspace
 
 import (
 	"bytes"
@@ -38,9 +38,8 @@ func KeyToString(key Key) string {
 	return fmt.Sprintf("%x", key)
 }
 
-// Between returns whether n is between lower and upper
+// Between returns whether x is between a and b
 func Between(x, a, b Key) bool {
-
 	X := x[:]
 	A := a[:]
 	B := b[:]

@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.1
+	github.com/graphql-go/graphql v0.7.8
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
 	github.com/lukehoban/go-outline v0.0.0-20161011150102-e78556874252 // indirect
 	go.uber.org/zap v1.10.0
