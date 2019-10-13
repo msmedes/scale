@@ -127,36 +127,10 @@ func (node *Node) SetLocal(key keyspace.Key, value []byte) error {
 
 // Get return a value stored on this node
 func (node *Node) Get(key keyspace.Key) ([]byte, error) {
-	node.Logger.Infof("get: %x", key)
-	if keyspace.BetweenRightInclusive(key, node.ID, node.successor.GetID()) {
-		node.Logger.Infof("in between, getting on successor: %x", key)
-		val, err := node.successor.RPC.GetLocal(
-			context.Background(),
-			&pb.GetRequest{Key: key[:]},
-		)
+	succ, err := node.FindSuccessor(key)
+	remoteNode := NewRemoteNode(succ.GetAddr(), node)
 
-		if err != nil {
-			return nil, err
-		}
-
-		return val.GetValue(), nil
-	}
-
-	closestPrecedingID := node.closestPrecedingNode(key)
-
-	if bytes.Equal(closestPrecedingID[:], node.ID[:]) {
-		node.Logger.Infof("getting local: %x", key)
-		return node.GetLocal(key)
-	}
-
-	remoteNode, ok := node.remoteConnections[closestPrecedingID]
-
-	if !ok {
-		node.Logger.Fatalf("remoteNode with ID %s not found", keyspace.KeyToString(closestPrecedingID))
-	}
-
-	node.Logger.Infof("calling get: %x on node %x", key, remoteNode.GetID())
-	val, err := remoteNode.RPC.Get(
+	val, err := remoteNode.RPC.GetLocal(
 		context.Background(),
 		&pb.GetRequest{Key: key[:]},
 	)
@@ -170,36 +144,10 @@ func (node *Node) Get(key keyspace.Key) ([]byte, error) {
 
 // Set set a value in the local store
 func (node *Node) Set(key keyspace.Key, value []byte) error {
-	node.Logger.Infof("set: %x", key)
-	if keyspace.BetweenRightInclusive(key, node.ID, node.successor.GetID()) {
-		node.Logger.Infof("between, setting on successor: %x", key)
-		_, err := node.successor.RPC.SetLocal(context.Background(), &pb.SetRequest{
-			Key:   key[:],
-			Value: value,
-		})
+	succ, err := node.FindSuccessor(key)
+	remoteNode := NewRemoteNode(succ.GetAddr(), node)
 
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	closestPrecedingID := node.closestPrecedingNode(key)
-
-	if bytes.Equal(closestPrecedingID[:], node.ID[:]) {
-		node.Logger.Infof("setting local: %x", key)
-		return node.SetLocal(key, value)
-	}
-
-	remoteNode, ok := node.remoteConnections[closestPrecedingID]
-
-	if !ok {
-		node.Logger.Fatalf("remoteNode with ID %s not found", keyspace.KeyToString(closestPrecedingID))
-	}
-
-	node.Logger.Infof("calling set: %x on node %x", key, remoteNode.GetID())
-	_, err := remoteNode.RPC.Set(
+	_, err = remoteNode.RPC.SetLocal(
 		context.Background(),
 		&pb.SetRequest{Key: key[:], Value: value},
 	)
