@@ -10,6 +10,7 @@ type nodeMetadata struct {
 	Addr        string              `json:",omitempty"`
 	Predecessor *remoteNodeMetadata `json:",omitempty"`
 	Successor   *remoteNodeMetadata `json:",omitempty"`
+	FingerTable []string            `json:",omitempty"`
 }
 
 type metadata struct {

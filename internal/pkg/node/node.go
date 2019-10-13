@@ -57,6 +57,17 @@ func (node *Node) GetAddr() string {
 	return node.Addr
 }
 
+// GetFingerTable return an array of IDs in the table
+func (node *Node) GetFingerTableIDs() []keyspace.Key {
+	var keys []keyspace.Key
+
+	for _, k := range node.fingerTable {
+		keys = append(keys, k.ID)
+	}
+
+	return keys
+}
+
 // StabilizationStart run a process that periodically makes sure the finger table
 // is up to date and accurate
 func (node *Node) StabilizationStart() {
@@ -75,6 +86,40 @@ func (node *Node) StabilizationStart() {
 			}
 		}
 	}
+}
+
+// TransferKeys transfer keys to the given node
+func (node *Node) TransferKeys(id keyspace.Key, addr string) {
+	remote := NewRemoteNode(addr, node)
+
+	if bytes.Compare(id[:], node.ID[:]) >= 0 {
+		return
+	}
+
+	for _, k := range node.store.Keys() {
+		if bytes.Compare(k[:], id[:]) >= 0 {
+			break
+		}
+
+		node.transferKey(k, remote)
+	}
+}
+
+func (node *Node) transferKey(key keyspace.Key, remote *RemoteNode) {
+	val, err := node.GetLocal(key)
+
+	if err != nil {
+		node.Logger.Error(err)
+	}
+
+	req := &pb.SetRequest{Key: key[:], Value: val[:]}
+	_, err = remote.RPC.SetLocal(context.Background(), req)
+
+	if err != nil {
+		node.Logger.Error(err)
+	}
+
+	node.store.Del(key)
 }
 
 // Join join an existing network via another node
@@ -111,6 +156,14 @@ func (node *Node) Join(addr string) {
 	}
 
 	node.successor = remoteNode
+
+	if !keyspace.Equal(node.ID, node.successor.ID) {
+		node.successor.RPC.TransferKeys(context.Background(), &pb.KeyTransferRequest{
+			Id:   node.ID[:],
+			Addr: node.Addr,
+		})
+	}
+
 	node.Logger.Infof("found successor: %s", keyspace.KeyToString(node.successor.ID))
 	node.Logger.Info("joined network")
 }
