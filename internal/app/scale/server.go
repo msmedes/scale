@@ -41,19 +41,20 @@ func ServerListen() {
 	rpcServer := rpc.NewRPC(node, logger, sugar, addr)
 	graphql := graphql.NewGraphQL(webAddr, sugar, rpcServer)
 
-	if len(join) > 0 {
-		node.Join(join)
-	}
-
 	defer node.Shutdown()
 	defer logger.Sync()
 
-	go node.StabilizationStart()
 	go graphql.ServerListen()
 	go rpcServer.ServerListen()
 
 	sugar.Infof("listening - graphql: %s", webAddr)
 	sugar.Infof("listening - internode: %s", addr)
+
+	if len(join) > 0 {
+		node.Join(join)
+	}
+
+	go node.StabilizationStart()
 
 	select {}
 }

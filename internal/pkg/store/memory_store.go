@@ -36,3 +36,14 @@ func (s *MemoryStore) Del(key Key) error {
 	delete(s.data, key)
 	return nil
 }
+
+// Keys list of keys
+func (s *MemoryStore) Keys() []Key {
+	keys := make([]Key, 0, len(s.data))
+
+	for k := range s.data {
+		keys = append(keys, k)
+	}
+
+	return keys
+}

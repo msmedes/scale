@@ -8,6 +8,7 @@ message RemoteId { bytes id = 1; }
 message RemoteQuery { bytes id = 1; }
 message GetRequest { bytes key = 1; }
 message GetResponse { bytes value = 1; }
+message KeyTransferRequest { bytes id = 1; string addr = 2; }
 
 message SetRequest {
   bytes key = 1;
@@ -21,6 +22,7 @@ message NodeMetadata {
   string predecessorAddr = 4;
   bytes successorId = 5;
   string successorAddr = 6;
+  repeated bytes fingerTable = 7;
 }
 
 message RemoteNode {
@@ -40,4 +42,5 @@ service Scale {
   rpc Set(SetRequest) returns (Success) {}
   rpc GetNodeMetadata(Empty) returns (NodeMetadata) {}
   rpc Ping(Empty) returns (Success) {}
+  rpc TransferKeys(KeyTransferRequest) returns (Success) {}
 }

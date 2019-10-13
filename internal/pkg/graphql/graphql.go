@@ -92,6 +92,7 @@ func (g *GraphQL) buildSchema() {
 				"addr":        &gql.Field{Type: gql.NewNonNull(gql.String)},
 				"predecessor": &gql.Field{Type: remoteNodeMetadataType},
 				"successor":   &gql.Field{Type: remoteNodeMetadataType},
+				"fingerTable": &gql.Field{Type: gql.NewNonNull(gql.NewList(gql.NewNonNull(gql.String)))},
 			},
 		},
 	)
@@ -116,9 +117,16 @@ func (g *GraphQL) buildSchema() {
 					Resolve: func(p gql.ResolveParams) (interface{}, error) {
 						nodeMeta, err := g.rpc.GetNodeMetadata(context.Background(), &pb.Empty{})
 
+						var ft []string
+
+						for _, k := range nodeMeta.GetFingerTable() {
+							ft = append(ft, fmt.Sprintf("%x", k))
+						}
+
 						node := &nodeMetadata{
-							ID:   fmt.Sprintf("%x", nodeMeta.GetId()),
-							Addr: nodeMeta.GetAddr(),
+							ID:          fmt.Sprintf("%x", nodeMeta.GetId()),
+							Addr:        nodeMeta.GetAddr(),
+							FingerTable: ft,
 						}
 
 						if err != nil {
