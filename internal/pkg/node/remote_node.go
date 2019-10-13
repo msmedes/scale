@@ -11,13 +11,13 @@ import (
 type RemoteNode struct {
 	scale.RemoteNode
 
-	ID   keyspace.Key
+	ID   scale.Key
 	Addr string
 	RPC  pb.ScaleClient
 }
 
 // GetID getter for ID
-func (r *RemoteNode) GetID() keyspace.Key {
+func (r *RemoteNode) GetID() scale.Key {
 	return r.ID
 }
 

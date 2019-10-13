@@ -1,27 +1,39 @@
 package scale
 
-import "github.com/msmedes/scale/internal/pkg/keyspace"
-
 // Canonical types for the implementation
+
+// M bit keyspace
+const M = 32
+
+// Key 20 byte key
+type Key = [M / 8]byte
 
 // RemoteNode contains metadata (ID and Address) about another node in the network
 type RemoteNode interface {
-	GetID() keyspace.Key
+	GetID() Key
 	GetAddr() string
 }
 
 // Node represents the current node and operations it is responsible for
 type Node interface {
-	Get(keyspace.Key) ([]byte, error)
-	Set(keyspace.Key, []byte) error
-	GetLocal(keyspace.Key) ([]byte, error)
-	SetLocal(keyspace.Key, []byte) error
-	Notify(keyspace.Key, string) error
-	FindSuccessor(keyspace.Key) (RemoteNode, error)
+	Get(Key) ([]byte, error)
+	Set(Key, []byte) error
+	GetLocal(Key) ([]byte, error)
+	SetLocal(Key, []byte) error
+	Notify(Key, string) error
+	FindSuccessor(Key) (RemoteNode, error)
 	GetSuccessor() (RemoteNode, error)
 	GetPredecessor() (RemoteNode, error)
-	GetID() keyspace.Key
+	GetID() Key
 	GetAddr() string
-	TransferKeys(keyspace.Key, string)
-	GetFingerTableIDs() []keyspace.Key
+	TransferKeys(Key, string)
+	GetFingerTableIDs() []Key
+}
+
+// Store represents a Scale-compatible underlying data store
+type Store interface {
+	Get(Key) []byte
+	Set(Key, []byte) error
+	Del(Key) error
+	Keys() []Key
 }
