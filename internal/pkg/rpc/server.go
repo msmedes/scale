@@ -31,11 +31,40 @@ func NewRPC(node scale.Node, logger *zap.Logger, sugar *zap.SugaredLogger, addr 
 	}
 }
 
+// Ping health check
+func (r *RPC) Ping(ctx context.Context, in *pb.Empty) (*pb.Success, error) {
+	return &pb.Success{}, nil
+}
+
+// Get rpc wrapper for node.Get
+func (r *RPC) Get(ctx context.Context, in *pb.GetRequest) (*pb.GetResponse, error) {
+	val, err := r.node.Get(keyspace.ByteArrayToKey(in.GetKey()))
+
+	if err != nil {
+		return nil, err
+	}
+
+	res := &pb.GetResponse{Value: val}
+
+	return res, nil
+}
+
+// Set rpc wrapper for node.Set
+func (r *RPC) Set(ctx context.Context, in *pb.SetRequest) (*pb.Success, error) {
+	r.node.Set(keyspace.ByteArrayToKey(in.GetKey()), in.GetValue())
+
+	return &pb.Success{}, nil
+}
+
 // GetLocal rpc wrapper for node.store.Get
 func (r *RPC) GetLocal(ctx context.Context, in *pb.GetRequest) (*pb.GetResponse, error) {
-	res := &pb.GetResponse{
-		Value: r.node.GetLocal(keyspace.ByteArrayToKey(in.GetKey())),
+	val, err := r.node.GetLocal(keyspace.ByteArrayToKey(in.GetKey()))
+
+	if err != nil {
+		return nil, err
 	}
+
+	res := &pb.GetResponse{Value: val}
 
 	return res, nil
 }

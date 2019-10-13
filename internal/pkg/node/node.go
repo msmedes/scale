@@ -15,8 +15,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// StabilizeInterval how often to execute stabilization
-const StabilizeInterval = 10
+// StabilizeInterval how often to execute stabilization in seconds
+const StabilizeInterval = 1
 
 // Node main node class
 type Node struct {
@@ -27,7 +27,7 @@ type Node struct {
 	predecessor       *RemoteNode
 	successor         *RemoteNode
 	fingerTable       finger.Table
-	Store             *store.MemoryStore
+	store             *store.MemoryStore
 	Logger            *zap.SugaredLogger
 	remoteConnections map[keyspace.Key]*RemoteNode
 }
@@ -37,7 +37,7 @@ func NewNode(addr string) *Node {
 	node := &Node{
 		ID:                keyspace.GenerateKey(addr),
 		Addr:              addr,
-		Store:             store.NewMemoryStore(),
+		store:             store.NewMemoryStore(),
 		remoteConnections: make(map[keyspace.Key]*RemoteNode),
 	}
 
@@ -68,8 +68,9 @@ func (node *Node) StabilizationStart() {
 		case <-ticker.C:
 			next = node.fixNextFinger(next)
 			node.stabilize()
+			node.checkPredecessor()
 
-			if next >= keyspace.M {
+			if next == keyspace.M {
 				next = 0
 			}
 		}
@@ -115,30 +116,52 @@ func (node *Node) Join(addr string) {
 }
 
 // GetLocal return a value stored on this node
-func (node *Node) GetLocal(key keyspace.Key) []byte {
-	return node.Store.Get(key)
+func (node *Node) GetLocal(key keyspace.Key) ([]byte, error) {
+	return node.store.Get(key), nil
 }
 
 // SetLocal set a value in the local store
-func (node *Node) SetLocal(key keyspace.Key, value []byte) {
-	node.Store.Set(key, value)
+func (node *Node) SetLocal(key keyspace.Key, value []byte) error {
+	return node.store.Set(key, value)
 }
 
 // Get return a value stored on this node
-// TODO replace this with the one that actually forwards the request
-func (node *Node) Get(key keyspace.Key) []byte {
-	return node.Store.Get(key)
+func (node *Node) Get(key keyspace.Key) ([]byte, error) {
+	succ, err := node.FindSuccessor(key)
+	remoteNode := NewRemoteNode(succ.GetAddr(), node)
+
+	val, err := remoteNode.RPC.GetLocal(
+		context.Background(),
+		&pb.GetRequest{Key: key[:]},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return val.GetValue(), nil
 }
 
 // Set set a value in the local store
-// TODO replace this with the one that actually forwards the request
-func (node *Node) Set(key keyspace.Key, value []byte) {
-	node.Store.Set(key, value)
+func (node *Node) Set(key keyspace.Key, value []byte) error {
+	succ, err := node.FindSuccessor(key)
+	remoteNode := NewRemoteNode(succ.GetAddr(), node)
+
+	_, err = remoteNode.RPC.SetLocal(
+		context.Background(),
+		&pb.SetRequest{Key: key[:], Value: value},
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // FindSuccessor returns the successor for this node
 func (node *Node) FindSuccessor(id keyspace.Key) (scale.RemoteNode, error) {
-	if keyspace.BetweenRightInclusive(id, node.ID, node.successor.ID) {
+	if keyspace.BetweenRightInclusive(id, node.ID, node.successor.GetID()) {
 		return node.successor, nil
 	}
 
@@ -215,8 +238,8 @@ func (node *Node) stabilize() {
 	succPredecessor, err := node.successor.RPC.GetPredecessor(context.Background(), &pb.Empty{})
 
 	if err != nil {
+		node.Logger.Errorf("error retrieving predecessor from successor %s", keyspace.KeyToString(node.successor.ID))
 		node.Logger.Error(err)
-		node.Logger.Fatalf("error retrieving predecessor from successor %s", keyspace.KeyToString(node.successor.ID))
 	}
 
 	// The successor may not yet have a predecessor, meaning it has not
@@ -231,17 +254,30 @@ func (node *Node) stabilize() {
 	node.successor.RPC.Notify(context.Background(), &pb.RemoteNode{Id: node.ID[:], Addr: node.Addr})
 }
 
+func (node *Node) checkPredecessor() {
+	predecessor := node.predecessor
+
+	if predecessor == nil {
+		return
+	}
+
+	_, err := predecessor.RPC.Ping(context.Background(), &pb.Empty{})
+
+	if err != nil {
+		node.Logger.Infof("predecessor unresponsive. removing %s", keyspace.KeyToString(predecessor.GetID()))
+		node.predecessor = nil
+	}
+}
+
 // Notify is called when another node thinks it is our predecessor
 func (node *Node) Notify(id keyspace.Key, addr string) error {
 	if node.predecessor == nil || keyspace.Between(id, node.predecessor.ID, node.ID) {
 		node.predecessor = NewRemoteNode(addr, node)
 		// Then we transfer keys
-		node.Logger.Infof("predecessor switched to %s", keyspace.KeyToString(id))
+		node.Logger.Infof("predecessor set to %s", keyspace.KeyToString(id))
 
 		return nil
 	}
-
-	node.Logger.Info("predecessor is already set")
 
 	return nil
 }

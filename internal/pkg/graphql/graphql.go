@@ -78,8 +78,8 @@ func (g *GraphQL) buildSchema() {
 		gql.ObjectConfig{
 			Name: "RemoteNodeMetadata",
 			Fields: gql.Fields{
-				"id":   &gql.Field{Type: gql.String},
-				"addr": &gql.Field{Type: gql.String},
+				"id":   &gql.Field{Type: gql.NewNonNull(gql.String)},
+				"addr": &gql.Field{Type: gql.NewNonNull(gql.String)},
 			},
 		},
 	)
@@ -88,8 +88,8 @@ func (g *GraphQL) buildSchema() {
 		gql.ObjectConfig{
 			Name: "NodeMetadata",
 			Fields: gql.Fields{
-				"id":          &gql.Field{Type: gql.String},
-				"addr":        &gql.Field{Type: gql.String},
+				"id":          &gql.Field{Type: gql.NewNonNull(gql.String)},
+				"addr":        &gql.Field{Type: gql.NewNonNull(gql.String)},
 				"predecessor": &gql.Field{Type: remoteNodeMetadataType},
 				"successor":   &gql.Field{Type: remoteNodeMetadataType},
 			},
@@ -101,7 +101,7 @@ func (g *GraphQL) buildSchema() {
 			Name: "Metadata",
 			Fields: gql.Fields{
 				"node": &gql.Field{
-					Type: nodeMetadataType,
+					Type: gql.NewNonNull(nodeMetadataType),
 				},
 			},
 		},
@@ -116,24 +116,33 @@ func (g *GraphQL) buildSchema() {
 					Resolve: func(p gql.ResolveParams) (interface{}, error) {
 						nodeMeta, err := g.rpc.GetNodeMetadata(context.Background(), &pb.Empty{})
 
+						node := &nodeMetadata{
+							ID:   fmt.Sprintf("%x", nodeMeta.GetId()),
+							Addr: nodeMeta.GetAddr(),
+						}
+
 						if err != nil {
 							return nil, err
 						}
 
-						meta := &metadata{
-							Node: &nodeMetadata{
-								ID:   fmt.Sprintf("%x", nodeMeta.GetId()),
-								Addr: nodeMeta.GetAddr(),
-								Predecessor: remoteNodeMetadata{
-									ID:   fmt.Sprintf("%x", nodeMeta.GetPredecessorId()),
-									Addr: nodeMeta.GetPredecessorAddr(),
-								},
-								Successor: remoteNodeMetadata{
-									ID:   fmt.Sprintf("%x", nodeMeta.GetSuccessorId()),
-									Addr: nodeMeta.GetSuccessorAddr(),
-								},
-							},
+						predID := nodeMeta.GetPredecessorId()
+						succID := nodeMeta.GetSuccessorId()
+
+						if predID != nil {
+							node.Predecessor = &remoteNodeMetadata{
+								ID:   fmt.Sprintf("%x", predID),
+								Addr: nodeMeta.GetPredecessorAddr(),
+							}
 						}
+
+						if succID != nil {
+							node.Successor = &remoteNodeMetadata{
+								ID:   fmt.Sprintf("%x", succID),
+								Addr: nodeMeta.GetSuccessorAddr(),
+							}
+						}
+
+						meta := &metadata{Node: node}
 
 						return meta, nil
 					},
@@ -141,12 +150,12 @@ func (g *GraphQL) buildSchema() {
 				"get": &gql.Field{
 					Type: gql.String,
 					Args: gql.FieldConfigArgument{
-						"key": &gql.ArgumentConfig{Type: gql.String},
+						"key": &gql.ArgumentConfig{Type: gql.NewNonNull(gql.String)},
 					},
 					Resolve: func(p gql.ResolveParams) (interface{}, error) {
 						key := []byte(p.Args["key"].(string))
 
-						res, err := g.rpc.GetLocal(context.Background(), &pb.GetRequest{Key: key})
+						res, err := g.rpc.Get(context.Background(), &pb.GetRequest{Key: key})
 
 						if err != nil {
 							return nil, err
@@ -166,18 +175,14 @@ func (g *GraphQL) buildSchema() {
 				"set": &gql.Field{
 					Type: gql.Int,
 					Args: gql.FieldConfigArgument{
-						"key": &gql.ArgumentConfig{
-							Type: gql.String,
-						},
-						"value": &gql.ArgumentConfig{
-							Type: gql.String,
-						},
+						"key":   &gql.ArgumentConfig{Type: gql.NewNonNull(gql.String)},
+						"value": &gql.ArgumentConfig{Type: gql.NewNonNull(gql.String)},
 					},
 					Resolve: func(p gql.ResolveParams) (interface{}, error) {
 						key := []byte(p.Args["key"].(string))
 						val := []byte(p.Args["value"].(string))
 
-						_, err := g.rpc.SetLocal(context.Background(), &pb.SetRequest{Key: key, Value: val})
+						_, err := g.rpc.Set(context.Background(), &pb.SetRequest{Key: key, Value: val})
 
 						if err != nil {
 							return nil, err

@@ -36,5 +36,8 @@ service Scale {
   rpc Notify(RemoteNode) returns (Success) {}
   rpc GetLocal(GetRequest) returns (GetResponse) {}
   rpc SetLocal(SetRequest) returns (Success) {}
+  rpc Get(GetRequest) returns (GetResponse) {}
+  rpc Set(SetRequest) returns (Success) {}
   rpc GetNodeMetadata(Empty) returns (NodeMetadata) {}
+  rpc Ping(Empty) returns (Success) {}
 }
