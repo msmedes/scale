@@ -31,6 +31,11 @@ func NewRPC(node scale.Node, logger *zap.Logger, sugar *zap.SugaredLogger, addr 
 	}
 }
 
+// Ping health check
+func (r *RPC) Ping(ctx context.Context, in *pb.Empty) (*pb.Success, error) {
+	return &pb.Success{}, nil
+}
+
 // Get rpc wrapper for node.Get
 func (r *RPC) Get(ctx context.Context, in *pb.GetRequest) (*pb.GetResponse, error) {
 	val, err := r.node.Get(keyspace.ByteArrayToKey(in.GetKey()))

@@ -39,4 +39,5 @@ service Scale {
   rpc Get(GetRequest) returns (GetResponse) {}
   rpc Set(SetRequest) returns (Success) {}
   rpc GetNodeMetadata(Empty) returns (NodeMetadata) {}
+  rpc Ping(Empty) returns (Success) {}
 }
