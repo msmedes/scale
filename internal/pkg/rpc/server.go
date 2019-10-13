@@ -31,6 +31,12 @@ func NewRPC(node scale.Node, logger *zap.Logger, sugar *zap.SugaredLogger, addr 
 	}
 }
 
+// TransferKeys proxy to node.TransferKeys
+func (r *RPC) TransferKeys(ctx context.Context, in *pb.KeyTransferRequest) (*pb.Success, error) {
+	r.node.TransferKeys(keyspace.ByteArrayToKey(in.GetId()), in.GetAddr())
+	return &pb.Success{}, nil
+}
+
 // Ping health check
 func (r *RPC) Ping(ctx context.Context, in *pb.Empty) (*pb.Success, error) {
 	return &pb.Success{}, nil
@@ -146,9 +152,16 @@ func (r *RPC) Notify(ctx context.Context, in *pb.RemoteNode) (*pb.Success, error
 func (r *RPC) GetNodeMetadata(context.Context, *pb.Empty) (*pb.NodeMetadata, error) {
 	id := r.node.GetID()
 
+	var ft [][]byte
+
+	for _, k := range r.node.GetFingerTableIDs() {
+		ft = append(ft, k[:])
+	}
+
 	meta := &pb.NodeMetadata{
-		Id:   id[:],
-		Addr: r.node.GetAddr(),
+		Id:          id[:],
+		Addr:        r.node.GetAddr(),
+		FingerTable: ft,
 	}
 
 	predecessor, err := r.node.GetPredecessor()
