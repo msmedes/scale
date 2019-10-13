@@ -16,7 +16,7 @@ import (
 )
 
 // StabilizeInterval how often to execute stabilization in seconds
-const StabilizeInterval = 10
+const StabilizeInterval = 1
 
 // Node main node class
 type Node struct {
@@ -68,8 +68,9 @@ func (node *Node) StabilizationStart() {
 		case <-ticker.C:
 			next = node.fixNextFinger(next)
 			node.stabilize()
+			node.checkPredecessor()
 
-			if next >= keyspace.M {
+			if next == keyspace.M {
 				next = 0
 			}
 		}
@@ -112,8 +113,6 @@ func (node *Node) Join(addr string) {
 	node.successor = remoteNode
 	node.Logger.Infof("found successor: %s", keyspace.KeyToString(node.successor.ID))
 	node.Logger.Info("joined network")
-	node.stabilize()
-	node.fixNextFinger(0)
 }
 
 // GetLocal return a value stored on this node
@@ -291,8 +290,8 @@ func (node *Node) stabilize() {
 	succPredecessor, err := node.successor.RPC.GetPredecessor(context.Background(), &pb.Empty{})
 
 	if err != nil {
+		node.Logger.Errorf("error retrieving predecessor from successor %s", keyspace.KeyToString(node.successor.ID))
 		node.Logger.Error(err)
-		node.Logger.Fatalf("error retrieving predecessor from successor %s", keyspace.KeyToString(node.successor.ID))
 	}
 
 	// The successor may not yet have a predecessor, meaning it has not
@@ -307,17 +306,30 @@ func (node *Node) stabilize() {
 	node.successor.RPC.Notify(context.Background(), &pb.RemoteNode{Id: node.ID[:], Addr: node.Addr})
 }
 
+func (node *Node) checkPredecessor() {
+	predecessor := node.predecessor
+
+	if predecessor == nil {
+		return
+	}
+
+	_, err := predecessor.RPC.Ping(context.Background(), &pb.Empty{})
+
+	if err != nil {
+		node.Logger.Infof("predecessor unresponsive. removing %s", keyspace.KeyToString(predecessor.GetID()))
+		node.predecessor = nil
+	}
+}
+
 // Notify is called when another node thinks it is our predecessor
 func (node *Node) Notify(id keyspace.Key, addr string) error {
 	if node.predecessor == nil || keyspace.Between(id, node.predecessor.ID, node.ID) {
 		node.predecessor = NewRemoteNode(addr, node)
 		// Then we transfer keys
-		node.Logger.Infof("predecessor switched to %s", keyspace.KeyToString(id))
+		node.Logger.Infof("predecessor set to %s", keyspace.KeyToString(id))
 
 		return nil
 	}
-
-	node.Logger.Info("predecessor is already set")
 
 	return nil
 }

@@ -12,6 +12,11 @@ const M = 32
 // Key 20 byte key
 type Key = [M / 8]byte
 
+// Equal whether 2 keys are equal
+func Equal(a Key, b Key) bool {
+	return bytes.Equal(a[:], b[:])
+}
+
 // GenerateKey hash a string
 func GenerateKey(str string) Key {
 	h := sha1.New()
