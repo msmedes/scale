@@ -10,7 +10,6 @@ import (
 
 	"github.com/msmedes/scale/internal/pkg/finger"
 	"github.com/msmedes/scale/internal/pkg/keyspace"
-	"github.com/msmedes/scale/internal/pkg/rpc"
 	pb "github.com/msmedes/scale/internal/pkg/rpc/proto"
 	"github.com/msmedes/scale/internal/pkg/scale"
 	"github.com/msmedes/scale/internal/pkg/store"
@@ -18,7 +17,7 @@ import (
 )
 
 // StabilizeInterval how often to execute stabilization in seconds
-const StabilizeInterval = 5
+const StabilizeInterval = 1
 
 // Node main node class
 type Node struct {
@@ -140,10 +139,11 @@ func (node *Node) transferKey(key scale.Key, remote *RemoteNode) {
 
 // Join join an existing network via another node
 func (node *Node) Join(addr string) {
+	var remoteNode *RemoteNode
 	node.Logger.Infof("joining network via node at %s", addr)
 
 	// create a client for the node we are trying to join
-	remoteNode := NewRemoteNode(addr, node)
+	remoteNode = NewRemoteNode(addr, node)
 
 	// search for the successor to this node
 	successor, err := remoteNode.RPC.FindSuccessor(
@@ -157,15 +157,16 @@ func (node *Node) Join(addr string) {
 
 	// if the successor is not the node we are joining add it to remoteConnections
 	if !ok {
-		client, conn := rpc.NewClient(successor.Addr)
-		remoteNode = &RemoteNode{
-			ID:               successorID,
-			Addr:             successor.Addr,
-			RPC:              client,
-			clientConnection: conn,
-		}
+		// client, conn := rpc.NewClient(successor.Addr)
+		// remoteNode = &RemoteNode{
+		// 	ID:               successorID,
+		// 	Addr:             successor.Addr,
+		// 	RPC:              client,
+		// 	clientConnection: conn,
+		// }
 
-		node.remoteConnections[successorID] = remoteNode
+		// node.remoteConnections[successorID] = remoteNode
+		remoteNode = NewRemoteNode(successor.Addr, node)
 	}
 
 	if err != nil {
@@ -256,10 +257,11 @@ func (node *Node) FindSuccessor(id scale.Key) (scale.RemoteNode, error) {
 		node.Logger.Fatal(err)
 	}
 
-	return &RemoteNode{
-		ID:   keyspace.ByteArrayToKey(successor.Id),
-		Addr: successor.Addr,
-	}, nil
+	// return &RemoteNode{
+	// 	ID:   keyspace.ByteArrayToKey(successor.Id),
+	// 	Addr: successor.Addr,
+	// }, nil
+	return NewRemoteNode(successor.Addr, node), nil
 }
 
 // closestPrecedingNode returns the node in the finger table
@@ -281,8 +283,8 @@ func (node *Node) closestPrecedingNode(id scale.Key) scale.Key {
 
 // GetPredecessor returns the node's predecessor
 func (node *Node) GetPredecessor() (scale.RemoteNode, error) {
-	// node.RLock()
-	// defer node.RUnlock()
+	node.RLock()
+	defer node.RUnlock()
 
 	if node.predecessor != nil {
 		return node.predecessor, nil
@@ -293,8 +295,8 @@ func (node *Node) GetPredecessor() (scale.RemoteNode, error) {
 
 // GetSuccessor retunrs the node's successor
 func (node *Node) GetSuccessor() (scale.RemoteNode, error) {
-	// node.RLock()
-	// defer node.RUnlock()
+	node.RLock()
+	defer node.RUnlock()
 
 	if node.successor != nil {
 		return node.successor, nil
