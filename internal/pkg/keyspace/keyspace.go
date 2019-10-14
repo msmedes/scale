@@ -15,10 +15,8 @@ func Equal(a scale.Key, b scale.Key) bool {
 
 // GenerateKey hash a string
 func GenerateKey(str string) scale.Key {
-	h := sha1.New()
-	h.Write([]byte(str))
-
-	return ByteArrayToKey(h.Sum(nil))
+	hash := sha1.Sum([]byte(str))
+	return ByteArrayToKey(hash[:])
 }
 
 // StringToKey convert a string directly to a 20 byte key

@@ -8,6 +8,7 @@ type remoteNodeMetadata struct {
 type nodeMetadata struct {
 	ID          string              `json:",omitempty"`
 	Addr        string              `json:",omitempty"`
+	Port        string              `json:",omitempty"`
 	Predecessor *remoteNodeMetadata `json:",omitempty"`
 	Successor   *remoteNodeMetadata `json:",omitempty"`
 	FingerTable []string            `json:",omitempty"`

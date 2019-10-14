@@ -1,6 +1,8 @@
 package node
 
 import (
+	"strings"
+
 	"github.com/msmedes/scale/internal/pkg/keyspace"
 	"github.com/msmedes/scale/internal/pkg/rpc"
 	pb "github.com/msmedes/scale/internal/pkg/rpc/proto"
@@ -29,7 +31,8 @@ func (r *RemoteNode) GetAddr() string {
 // NewRemoteNode creates a new RemoteNode with an RPC client.
 // This will reuse RPC connections if given the same address
 func NewRemoteNode(addr string, node *Node) *RemoteNode {
-	id := keyspace.GenerateKey(addr)
+	port := addr[strings.LastIndex(addr, ":")+1:]
+	id := keyspace.GenerateKey(port)
 	remoteNode, ok := node.remoteConnections[id]
 
 	if !ok {
