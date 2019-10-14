@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/msmedes/scale/internal/pkg/keyspace"
+	"github.com/msmedes/scale/internal/pkg/scale"
 )
 
 // Table contains nodes in network for lookups
@@ -13,11 +14,11 @@ type Table []*Finger
 
 // Finger finger
 type Finger struct {
-	ID keyspace.Key
+	ID scale.Key
 }
 
 // NewFingerTable create and populate a finger table
-func NewFingerTable(m int, ID keyspace.Key) Table {
+func NewFingerTable(m int, ID scale.Key) Table {
 	ft := make([]*Finger, m)
 
 	for i := range ft {
