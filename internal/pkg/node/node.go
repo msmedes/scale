@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/msmedes/scale/internal/pkg/finger"
@@ -16,7 +17,7 @@ import (
 )
 
 // StabilizeInterval how often to execute stabilization in seconds
-const StabilizeInterval = 1
+const StabilizeInterval = 3
 
 // Node main node class
 type Node struct {
@@ -24,6 +25,7 @@ type Node struct {
 
 	ID                keyspace.Key
 	Addr              string
+	Port              string
 	predecessor       *RemoteNode
 	successor         *RemoteNode
 	fingerTable       finger.Table
@@ -34,9 +36,11 @@ type Node struct {
 
 // NewNode create a new node
 func NewNode(addr string) *Node {
+	port := addr[strings.LastIndex(addr, ":")+1:]
 	node := &Node{
-		ID:                keyspace.GenerateKey(addr),
+		ID:                keyspace.GenerateKey(port),
 		Addr:              addr,
+		Port:              port,
 		store:             store.NewMemoryStore(),
 		remoteConnections: make(map[keyspace.Key]*RemoteNode),
 	}
@@ -57,7 +61,12 @@ func (node *Node) GetAddr() string {
 	return node.Addr
 }
 
-// GetFingerTable return an array of IDs in the table
+// GetPort getter for port
+func (node *Node) GetPort() string {
+	return node.Port
+}
+
+// GetFingerTableIDs return an array of IDs in the table
 func (node *Node) GetFingerTableIDs() []keyspace.Key {
 	var keys []keyspace.Key
 
@@ -284,6 +293,9 @@ func (node *Node) Shutdown() {
 }
 
 func (node *Node) stabilize() {
+	// var succPredecessor pb.RemoteNode
+	// var err error
+
 	if bytes.Equal(node.successor.ID[:], node.ID[:]) {
 		return
 	}

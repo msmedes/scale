@@ -90,6 +90,7 @@ func (g *GraphQL) buildSchema() {
 			Fields: gql.Fields{
 				"id":          &gql.Field{Type: gql.NewNonNull(gql.String)},
 				"addr":        &gql.Field{Type: gql.NewNonNull(gql.String)},
+				"port":        &gql.Field{Type: gql.NewNonNull(gql.String)},
 				"predecessor": &gql.Field{Type: remoteNodeMetadataType},
 				"successor":   &gql.Field{Type: remoteNodeMetadataType},
 				"fingerTable": &gql.Field{Type: gql.NewNonNull(gql.NewList(gql.NewNonNull(gql.String)))},
@@ -126,6 +127,7 @@ func (g *GraphQL) buildSchema() {
 						node := &nodeMetadata{
 							ID:          fmt.Sprintf("%x", nodeMeta.GetId()),
 							Addr:        nodeMeta.GetAddr(),
+							Port:        nodeMeta.GetPort(),
 							FingerTable: ft,
 						}
 

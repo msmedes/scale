@@ -161,6 +161,7 @@ func (r *RPC) GetNodeMetadata(context.Context, *pb.Empty) (*pb.NodeMetadata, err
 	meta := &pb.NodeMetadata{
 		Id:          id[:],
 		Addr:        r.node.GetAddr(),
+		Port:        r.node.GetPort(),
 		FingerTable: ft,
 	}
 

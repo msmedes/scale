@@ -22,6 +22,7 @@ type Node interface {
 	GetPredecessor() (RemoteNode, error)
 	GetID() keyspace.Key
 	GetAddr() string
+	GetPort() string
 	TransferKeys(keyspace.Key, string)
 	GetFingerTableIDs() []keyspace.Key
 }

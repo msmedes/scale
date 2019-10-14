@@ -7,10 +7,10 @@ import (
 )
 
 // M keyspace
-const M = 32
+const M = 4
 
 // Key 20 byte key
-type Key = [M / 8]byte
+type Key = [4]byte
 
 // Equal whether 2 keys are equal
 func Equal(a Key, b Key) bool {
@@ -19,10 +19,8 @@ func Equal(a Key, b Key) bool {
 
 // GenerateKey hash a string
 func GenerateKey(str string) Key {
-	h := sha1.New()
-	h.Write([]byte(str))
-
-	return ByteArrayToKey(h.Sum(nil))
+	hash := sha1.Sum([]byte(str))
+	return ByteArrayToKey(hash[:])
 }
 
 // StringToKey convert a string directly to a 20 byte key
@@ -60,8 +58,8 @@ func Between(x, a, b Key) bool {
 // BetweenRightInclusive returns whether n is between lower and upper, upper
 // inclusive
 func BetweenRightInclusive(x, a, b Key) bool {
-	if bytes.Compare(a[:], b[:]) > 0 {
-		return Between(x, a, b) || bytes.Equal(x[:], a[:])
-	}
+	// if bytes.Compare(a[:], b[:]) > 0 {
+	// 	return Between(x, a, b) || bytes.Equal(x[:], a[:])
+	// }
 	return Between(x, a, b) || bytes.Equal(x[:], b[:])
 }
