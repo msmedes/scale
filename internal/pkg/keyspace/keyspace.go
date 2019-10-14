@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"fmt"
-  "github.com/msmedes/scale/internal/pkg/scale"
-)
 
+	"github.com/msmedes/scale/internal/pkg/scale"
+)
 
 // Equal whether 2 keys are equal
 func Equal(a scale.Key, b scale.Key) bool {
@@ -14,8 +14,7 @@ func Equal(a scale.Key, b scale.Key) bool {
 }
 
 // GenerateKey hash a string
-
-func GenerateKey(str string) Key {
+func GenerateKey(str string) scale.Key {
 	hash := sha1.Sum([]byte(str))
 	return ByteArrayToKey(hash[:])
 }
