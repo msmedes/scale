@@ -29,6 +29,7 @@ type Node interface {
 	GetPort() string
 	TransferKeys(keyspace.Key, string)
 	GetFingerTableIDs() []keyspace.Key
+}
 
 // Store represents a Scale-compatible underlying data store
 type Store interface {
