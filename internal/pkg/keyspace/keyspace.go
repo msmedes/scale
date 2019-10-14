@@ -4,45 +4,42 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"fmt"
+  "github.com/msmedes/scale/internal/pkg/scale"
 )
 
-// M keyspace
-const M = 4
-
-// Key 20 byte key
-type Key = [4]byte
 
 // Equal whether 2 keys are equal
-func Equal(a Key, b Key) bool {
+func Equal(a scale.Key, b scale.Key) bool {
 	return bytes.Equal(a[:], b[:])
 }
 
 // GenerateKey hash a string
+
 func GenerateKey(str string) Key {
 	hash := sha1.Sum([]byte(str))
 	return ByteArrayToKey(hash[:])
 }
 
 // StringToKey convert a string directly to a 20 byte key
-func StringToKey(str string) Key {
+func StringToKey(str string) scale.Key {
 	return ByteArrayToKey([]byte(str))
 }
 
 // ByteArrayToKey convert a variable length byte array to
 // 20 byte key
-func ByteArrayToKey(arr []byte) Key {
-	var key Key
+func ByteArrayToKey(arr []byte) scale.Key {
+	var key scale.Key
 	copy(key[:], arr)
 	return key
 }
 
 // KeyToString Convert a key to a string
-func KeyToString(key Key) string {
+func KeyToString(key scale.Key) string {
 	return fmt.Sprintf("%x", key)
 }
 
 // Between returns whether x is between a and b
-func Between(x, a, b Key) bool {
+func Between(x, a, b scale.Key) bool {
 	X := x[:]
 	A := a[:]
 	B := b[:]
@@ -57,9 +54,9 @@ func Between(x, a, b Key) bool {
 
 // BetweenRightInclusive returns whether n is between lower and upper, upper
 // inclusive
-func BetweenRightInclusive(x, a, b Key) bool {
-	// if bytes.Compare(a[:], b[:]) > 0 {
-	// 	return Between(x, a, b) || bytes.Equal(x[:], a[:])
-	// }
+func BetweenRightInclusive(x, a, b scale.Key) bool {
+	if bytes.Compare(a[:], b[:]) > 0 {
+		return Between(x, a, b) || bytes.Equal(x[:], a[:])
+	}
 	return Between(x, a, b) || bytes.Equal(x[:], b[:])
 }

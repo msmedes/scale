@@ -23,7 +23,7 @@ const StabilizeInterval = 3
 type Node struct {
 	scale.Node
 
-	ID                keyspace.Key
+	ID                scale.Key
 	Addr              string
 	Port              string
 	predecessor       *RemoteNode
@@ -31,7 +31,7 @@ type Node struct {
 	fingerTable       finger.Table
 	store             *store.MemoryStore
 	Logger            *zap.SugaredLogger
-	remoteConnections map[keyspace.Key]*RemoteNode
+	remoteConnections map[scale.Key]*RemoteNode
 }
 
 // NewNode create a new node
@@ -42,17 +42,17 @@ func NewNode(addr string) *Node {
 		Addr:              addr,
 		Port:              port,
 		store:             store.NewMemoryStore(),
-		remoteConnections: make(map[keyspace.Key]*RemoteNode),
+		remoteConnections: make(map[scale.Key]*RemoteNode),
 	}
 
-	node.fingerTable = finger.NewFingerTable(keyspace.M, node.ID)
+	node.fingerTable = finger.NewFingerTable(scale.M, node.ID)
 	node.successor = &RemoteNode{ID: node.ID, Addr: node.Addr}
 
 	return node
 }
 
 // GetID getter for ID
-func (node *Node) GetID() keyspace.Key {
+func (node *Node) GetID() scale.Key {
 	return node.ID
 }
 
@@ -61,14 +61,15 @@ func (node *Node) GetAddr() string {
 	return node.Addr
 }
 
+
 // GetPort getter for port
 func (node *Node) GetPort() string {
 	return node.Port
 }
-
 // GetFingerTableIDs return an array of IDs in the table
-func (node *Node) GetFingerTableIDs() []keyspace.Key {
-	var keys []keyspace.Key
+func (node *Node) GetFingerTableIDs() []scale.Key {
+	var keys []scale.Key
+
 
 	for _, k := range node.fingerTable {
 		keys = append(keys, k.ID)
@@ -90,7 +91,7 @@ func (node *Node) StabilizationStart() {
 			node.stabilize()
 			node.checkPredecessor()
 
-			if next == keyspace.M {
+			if next == scale.M {
 				next = 0
 			}
 		}
@@ -98,7 +99,7 @@ func (node *Node) StabilizationStart() {
 }
 
 // TransferKeys transfer keys to the given node
-func (node *Node) TransferKeys(id keyspace.Key, addr string) {
+func (node *Node) TransferKeys(id scale.Key, addr string) {
 	remote := NewRemoteNode(addr, node)
 
 	if bytes.Compare(id[:], node.ID[:]) >= 0 {
@@ -114,7 +115,7 @@ func (node *Node) TransferKeys(id keyspace.Key, addr string) {
 	}
 }
 
-func (node *Node) transferKey(key keyspace.Key, remote *RemoteNode) {
+func (node *Node) transferKey(key scale.Key, remote *RemoteNode) {
 	val, err := node.GetLocal(key)
 
 	if err != nil {
@@ -178,17 +179,17 @@ func (node *Node) Join(addr string) {
 }
 
 // GetLocal return a value stored on this node
-func (node *Node) GetLocal(key keyspace.Key) ([]byte, error) {
+func (node *Node) GetLocal(key scale.Key) ([]byte, error) {
 	return node.store.Get(key), nil
 }
 
 // SetLocal set a value in the local store
-func (node *Node) SetLocal(key keyspace.Key, value []byte) error {
+func (node *Node) SetLocal(key scale.Key, value []byte) error {
 	return node.store.Set(key, value)
 }
 
 // Get return a value stored on this node
-func (node *Node) Get(key keyspace.Key) ([]byte, error) {
+func (node *Node) Get(key scale.Key) ([]byte, error) {
 	succ, err := node.FindSuccessor(key)
 	remoteNode := NewRemoteNode(succ.GetAddr(), node)
 
@@ -205,7 +206,7 @@ func (node *Node) Get(key keyspace.Key) ([]byte, error) {
 }
 
 // Set set a value in the local store
-func (node *Node) Set(key keyspace.Key, value []byte) error {
+func (node *Node) Set(key scale.Key, value []byte) error {
 	succ, err := node.FindSuccessor(key)
 	remoteNode := NewRemoteNode(succ.GetAddr(), node)
 
@@ -222,7 +223,7 @@ func (node *Node) Set(key keyspace.Key, value []byte) error {
 }
 
 // FindSuccessor returns the successor for this node
-func (node *Node) FindSuccessor(id keyspace.Key) (scale.RemoteNode, error) {
+func (node *Node) FindSuccessor(id scale.Key) (scale.RemoteNode, error) {
 	if keyspace.BetweenRightInclusive(id, node.ID, node.successor.GetID()) {
 		return node.successor, nil
 	}
@@ -256,9 +257,9 @@ func (node *Node) FindSuccessor(id keyspace.Key) (scale.RemoteNode, error) {
 
 // closestPrecedingNode returns the node in the finger table
 // that is...the closest preceding node in the circle
-func (node *Node) closestPrecedingNode(id keyspace.Key) keyspace.Key {
+func (node *Node) closestPrecedingNode(id scale.Key) scale.Key {
 	// I think this could be implemented as binary search?
-	for i := keyspace.M - 1; i >= 0; i-- {
+	for i := scale.M - 1; i >= 0; i-- {
 		finger := node.fingerTable[i]
 
 		if keyspace.Between(finger.ID, node.ID, id) {
@@ -335,7 +336,7 @@ func (node *Node) checkPredecessor() {
 }
 
 // Notify is called when another node thinks it is our predecessor
-func (node *Node) Notify(id keyspace.Key, addr string) error {
+func (node *Node) Notify(id scale.Key, addr string) error {
 	if node.predecessor == nil || keyspace.Between(id, node.predecessor.ID, node.ID) {
 		node.predecessor = NewRemoteNode(addr, node)
 		// Then we transfer keys
@@ -348,7 +349,7 @@ func (node *Node) Notify(id keyspace.Key, addr string) error {
 }
 
 func (node *Node) fixNextFinger(next int) int {
-	nextHash := finger.Math(node.ID[:], next, keyspace.M)
+	nextHash := finger.Math(node.ID[:], next, scale.M)
 	successor, _ := node.FindSuccessor(keyspace.ByteArrayToKey(nextHash))
 	finger := &finger.Finger{ID: successor.GetID()}
 	node.fingerTable[next] = finger
