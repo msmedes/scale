@@ -3,10 +3,10 @@ package scale
 // Canonical types for the implementation
 
 // M bit keyspace
-const M = 32
+const M = 4
 
 // Key 20 byte key
-type Key = [M / 8]byte
+type Key = [4]byte
 
 // RemoteNode contains metadata (ID and Address) about another node in the network
 type RemoteNode interface {

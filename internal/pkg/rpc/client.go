@@ -8,7 +8,7 @@ import (
 )
 
 // NewClient returns a ScaleClient from the node to a specific remote Node.
-func NewClient(addr string) pb.ScaleClient {
+func NewClient(addr string) (pb.ScaleClient, *grpc.ClientConn) {
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 
 	if err != nil {
@@ -21,5 +21,5 @@ func NewClient(addr string) pb.ScaleClient {
 		log.Fatal(err)
 	}
 
-	return client
+	return client, conn
 }

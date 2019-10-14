@@ -11,6 +11,9 @@ lint:
 serve:
 	@go run cmd/scale/main.go
 
+race:
+	@go run -race cmd/scale/main.go
+	
 codegen:
 	@protoc -I internal/pkg/rpc internal/pkg/rpc/proto/scale.proto --go_out=plugins=grpc:internal/pkg/rpc
 
