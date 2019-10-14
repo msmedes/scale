@@ -27,8 +27,8 @@ type Node interface {
 	GetID() Key
 	GetAddr() string
 	GetPort() string
-	TransferKeys(keyspace.Key, string)
-	GetFingerTableIDs() []keyspace.Key
+	TransferKeys(Key, string)
+	GetFingerTableIDs() []Key
 }
 
 // Store represents a Scale-compatible underlying data store
