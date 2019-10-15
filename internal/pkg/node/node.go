@@ -239,10 +239,11 @@ func (node *Node) Set(key scale.Key, value []byte) error {
 
 //FindPredecessor finds the predecessor to the id
 func (node *Node) FindPredecessor(id scale.Key) (scale.RemoteNode, error) {
-	node.Lock()
-	node.Unlock()
+	node.RLock()
+	node.RUnlock()
 
 	var closestPrecedingRPC *pb.RemoteNode
+
 	if keyspace.Equal(node.ID, node.successor.ID) {
 		return NewRemoteNode(node.Addr, node), nil // this is the only node in the network
 	}
