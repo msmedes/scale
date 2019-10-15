@@ -54,5 +54,5 @@ func Between(x, a, b scale.Key) bool {
 // BetweenRightInclusive returns whether n is between lower and upper, upper
 // inclusive
 func BetweenRightInclusive(x, a, b scale.Key) bool {
-	return Between(x, a, b) || bytes.Equal(x[:], b[:])
+	return Between(x, a, b) || Equal(x, b)
 }
