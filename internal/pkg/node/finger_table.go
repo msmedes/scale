@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/msmedes/scale/internal/pkg/keyspace"
 	"github.com/msmedes/scale/internal/pkg/scale"
 )
 
@@ -19,11 +18,11 @@ type Table []*RemoteNode
 // }
 
 // NewFingerTable create and populate a finger table
-func NewFingerTable(n *Node) Table {
-	ft := make([]*scale.RemoteNode, scale.M)
+func NewFingerTable(node *Node) Table {
+	ft := make([]*RemoteNode, scale.M)
 
 	for i := range ft {
-		ft[i] = NewRemoteNode(n.Addr)
+		ft[i] = NewRemoteNode(node.Addr, node)
 	}
 
 	return ft
@@ -44,17 +43,13 @@ func Math(n []byte, i int, m int) []byte {
 	return res.Bytes()
 }
 
-func (f Finger) String() string {
-	return fmt.Sprintf("%s", keyspace.KeyToString(f.ID))
-}
-
 func (ft Table) String() string {
 	var buf bytes.Buffer
 
 	buf.WriteString("\n")
 
 	for _, val := range ft {
-		str := fmt.Sprintf("%s\n", val.String())
+		str := fmt.Sprintf("%+v", val)
 		buf.WriteString(str)
 	}
 
