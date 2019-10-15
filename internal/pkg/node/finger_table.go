@@ -1,35 +1,39 @@
-package finger
+package node
 
 import (
 	"bytes"
 	"fmt"
 	"math/big"
 
-	"github.com/msmedes/scale/internal/pkg/keyspace"
 	"github.com/msmedes/scale/internal/pkg/scale"
 )
 
 // Table contains nodes in network for lookups
-type Table []*Finger
+type Table []*RemoteNode
 
 // Finger finger
-type Finger struct {
-	ID scale.Key
-}
+// type Finger struct {
+// 	ID   scale.Key
+// 	Addr string
+// }
 
-// NewFingerTable create and populate a finger table
-func NewFingerTable(m int, ID scale.Key) Table {
-	ft := make([]*Finger, m)
+// Great news, there are now two ways we need to initialize
+// a finger table, this is for when there is only one node
+// in the chord
+
+// NewScaleFingerTable create and populate a finger table
+func NewScaleFingerTable(node *Node) Table {
+	ft := make([]*RemoteNode, scale.M)
 
 	for i := range ft {
-		ft[i] = &Finger{ID: ID}
+		ft[i] = NewRemoteNode(node.Addr, node)
 	}
 
 	return ft
 }
 
-// Math fingermath
-func Math(n []byte, i int, m int) []byte {
+// FingerMath fingermath
+func FingerMath(n []byte, i int, m int) []byte {
 	twoExp := big.NewInt(2)
 	twoExp.Exp(twoExp, big.NewInt(int64(i)), nil)
 	mExp := big.NewInt(2)
@@ -43,17 +47,13 @@ func Math(n []byte, i int, m int) []byte {
 	return res.Bytes()
 }
 
-func (f Finger) String() string {
-	return fmt.Sprintf("%s", keyspace.KeyToString(f.ID))
-}
-
 func (ft Table) String() string {
 	var buf bytes.Buffer
 
 	buf.WriteString("\n")
 
 	for _, val := range ft {
-		str := fmt.Sprintf("%s\n", val.String())
+		str := fmt.Sprintf("%+v", val)
 		buf.WriteString(str)
 	}
 

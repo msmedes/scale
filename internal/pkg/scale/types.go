@@ -10,31 +10,33 @@ type Key = [M / 8]byte
 
 // RemoteNode contains metadata (ID and Address) about another node in the network
 type RemoteNode interface {
-	GetID() Key
 	GetAddr() string
+	GetID() Key
 }
 
 // Node represents the current node and operations it is responsible for
 type Node interface {
-	Get(Key) ([]byte, error)
-	Set(Key, []byte) error
-	GetLocal(Key) ([]byte, error)
-	SetLocal(Key, []byte) error
-	Notify(Key, string) error
+	ClosestPrecedingFinger(Key) (RemoteNode, error)
+	FindPredecessor(Key) (RemoteNode, error)
 	FindSuccessor(Key) (RemoteNode, error)
-	GetSuccessor() (RemoteNode, error)
-	GetPredecessor() (RemoteNode, error)
-	GetID() Key
+	Get(Key) ([]byte, error)
 	GetAddr() string
-	GetPort() string
-	TransferKeys(Key, string)
 	GetFingerTableIDs() []Key
+	GetID() Key
+	GetLocal(Key) ([]byte, error)
+	GetPort() string
+	GetPredecessor() (RemoteNode, error)
+	GetSuccessor() (RemoteNode, error)
+	Notify(Key, string) error
+	Set(Key, []byte) error
+	SetLocal(Key, []byte) error
+	TransferKeys(Key, string)
 }
 
 // Store represents a Scale-compatible underlying data store
 type Store interface {
-	Get(Key) []byte
-	Set(Key, []byte) error
 	Del(Key) error
+	Get(Key) []byte
 	Keys() []Key
+	Set(Key, []byte) error
 }

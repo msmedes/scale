@@ -1,4 +1,4 @@
-package finger
+package node
 
 import (
 	"bytes"
@@ -44,7 +44,7 @@ func TestFingerMath(t *testing.T) {
 
 	for _, tt := range tests {
 		n := big.NewInt(tt.n).Bytes()
-		got := Math(n, tt.i, 8)
+		got := FingerMath(n, tt.i, 8)
 		want := big.NewInt(tt.exp).Bytes()
 
 		if !bytes.Equal(got[:], want) {
