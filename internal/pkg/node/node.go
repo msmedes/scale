@@ -47,8 +47,9 @@ func NewNode(addr string) *Node {
 		shutdownChannel:   make(chan struct{}),
 	}
 
-	node.fingerTable = NewFingerTable(node)
-	node.successor = &RemoteNode{ID: node.ID, Addr: node.Addr}
+	node.fingerTable = NewScaleFingerTable(node)
+	node.successor = NewRemoteNode(node.Addr, node)
+	node.predecessor = NewRemoteNode(node.Addr, node)
 
 	return node
 }
@@ -139,6 +140,8 @@ func (node *Node) transferKey(key scale.Key, remote *RemoteNode) {
 }
 
 // Join join an existing network via another node
+// This implements the pseudocode for in fig. 5 of the new paper
+// for concurrent joins
 func (node *Node) Join(addr string) {
 	var remoteNode *RemoteNode
 	node.Logger.Infof("joining network via node at %s", addr)
@@ -235,25 +238,26 @@ func (node *Node) Set(key scale.Key, value []byte) error {
 }
 
 //FindPredecessor finds the predecessor to the id
-func (node *Node) FindPredecessor(id scale.Key) (*RemoteNode, error) {
+func (node *Node) FindPredecessor(id scale.Key) (scale.RemoteNode, error) {
 	node.Lock()
 	node.Unlock()
 
-	// var closestPreceding *RemoteNode
-	// var predecessorSuccessorRemote *RemoteNode
 	var closestPrecedingRPC *pb.RemoteNode
 	if keyspace.Equal(node.ID, node.successor.ID) {
 		return NewRemoteNode(node.Addr, node), nil // this is the only node in the network
 	}
 
+	// I apologize for this Swift looking code but I don't see a better way at the moment
 	closestPreceding := NewRemoteNode(node.Addr, node)
 	predecessorSuccessor, _ := closestPreceding.RPC.GetSuccessor(context.Background(), &pb.Empty{})
 	predecessorSuccessorRemote := NewRemoteNode(predecessorSuccessor.Addr, node)
 
 	for !keyspace.BetweenRightInclusive(id, closestPreceding.ID, predecessorSuccessorRemote.ID) {
-		closestPrecedingRPC, _ := closestPreceding.RPC.ClosestPrecedingFinger(context.Background(), &pb.RemoteQuery{Id: id[:]})
+		closestPrecedingRPC, _ = closestPreceding.RPC.ClosestPrecedingFinger(context.Background(), &pb.RemoteQuery{Id: id[:]})
 		closestPreceding = NewRemoteNode(closestPrecedingRPC.Addr, node)
-		predecessorSuccessor, _ := closestPreceding.RPC.GetSuccessor(context.Background(), &pb.Empty{})
+		predecessorSuccessor, _ = closestPreceding.RPC.GetSuccessor(context.Background(), &pb.Empty{})
+		predecessorSuccessorRemote = NewRemoteNode(predecessorSuccessor.Addr, node)
+
 	}
 
 	return closestPreceding, nil
@@ -261,11 +265,15 @@ func (node *Node) FindPredecessor(id scale.Key) (*RemoteNode, error) {
 }
 
 // FindSuccessor returns the successor for this node
-func (node *Node) FindSuccessor(id scale.Key) (*RemoteNode, error) {
+func (node *Node) FindSuccessor(id scale.Key) (scale.RemoteNode, error) {
 	predecessor, _ := node.FindPredecessor(id)
+	// idk this is the only way I know how to do this right now.  The compiler was mad that
+	// that FindPredecessor technically returns an interface
+	predecessorRemote := predecessor.(*RemoteNode)
 
-	successorRPC, _ := predecessor.RPC.GetSuccessor(context.Background(), &pb.Empty{})
+	successorRPC, _ := predecessorRemote.RPC.GetSuccessor(context.Background(), &pb.Empty{})
 	return NewRemoteNode(successorRPC.Addr, node), nil
+
 }
 
 // FindSuccessor returns the successor for this node
@@ -298,8 +306,8 @@ func (node *Node) FindSuccessor(id scale.Key) (*RemoteNode, error) {
 // 	return NewRemoteNode(successor.Addr, node), nil
 // }
 
-// ClosestPrecedingFinger returns the closestprecedingfinger
-func (node *Node) ClosestPrecedingFinger(id scale.Key) (*RemoteNode, error) {
+// ClosestPrecedingFinger returns the closest preceding finger to the id
+func (node *Node) ClosestPrecedingFinger(id scale.Key) (scale.RemoteNode, error) {
 	node.RLock()
 	defer node.RUnlock()
 
@@ -311,7 +319,7 @@ func (node *Node) ClosestPrecedingFinger(id scale.Key) (*RemoteNode, error) {
 			return finger, nil
 		}
 	}
-	return node, nil
+	return NewRemoteNode(node.Addr, node), nil
 
 }
 
@@ -442,9 +450,10 @@ func (node *Node) fixNextFinger(next int) int {
 	node.RLock()
 	defer node.RUnlock()
 
-	nextHash := finger.Math(node.ID[:], next, scale.M)
+	nextHash := FingerMath(node.ID[:], next, scale.M)
 	successor, _ := node.FindSuccessor(keyspace.ByteArrayToKey(nextHash))
-	finger := &finger.Finger{ID: successor.GetID()}
+	successorRemote := successor.(*RemoteNode)
+	finger := NewRemoteNode(successorRemote.Addr, node)
 	node.fingerTable[next] = finger
 	return next + 1
 }
