@@ -71,6 +71,8 @@ func (node *Node) GetPort() string {
 
 // GetFingerTableIDs return an array of IDs in the table
 func (node *Node) GetFingerTableIDs() []scale.Key {
+	node.RLock()
+	defer node.RUnlock()
 	var keys []scale.Key
 
 	for _, k := range node.fingerTable {
@@ -157,15 +159,6 @@ func (node *Node) Join(addr string) {
 
 	// if the successor is not the node we are joining add it to remoteConnections
 	if !ok {
-		// client, conn := rpc.NewClient(successor.Addr)
-		// remoteNode = &RemoteNode{
-		// 	ID:               successorID,
-		// 	Addr:             successor.Addr,
-		// 	RPC:              client,
-		// 	clientConnection: conn,
-		// }
-
-		// node.remoteConnections[successorID] = remoteNode
 		remoteNode = NewRemoteNode(successor.Addr, node)
 	}
 
@@ -369,7 +362,8 @@ func (node *Node) checkPredecessor() {
 
 // Notify is called when another node thinks it is our predecessor
 func (node *Node) Notify(id scale.Key, addr string) error {
-
+	node.RLock()
+	defer node.RUnlock()
 	if node.predecessor == nil || keyspace.Between(id, node.predecessor.ID, node.ID) {
 		node.predecessor = NewRemoteNode(addr, node)
 		node.predecessor.RPC.TransferKeys(context.Background(), &pb.KeyTransferRequest{
