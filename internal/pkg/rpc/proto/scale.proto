@@ -33,8 +33,10 @@ message RemoteNode {
 }
 
 service Scale {
+  rpc ClosestPrecedingFinger(RemoteQuery) returns (RemoteNode) {}
   rpc GetSuccessor(Empty) returns (RemoteNode) {}
   rpc GetPredecessor(Empty) returns (RemoteNode) {}
+  rpc FindPredecessor(RemoteQuery) returns (RemoteNode) {}
   rpc FindSuccessor(RemoteQuery) returns (RemoteNode) {}
   rpc Notify(RemoteNode) returns (Success) {}
   rpc GetLocal(GetRequest) returns (GetResponse) {}

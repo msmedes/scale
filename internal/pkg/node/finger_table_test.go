@@ -1,4 +1,4 @@
-package finger
+package node
 
 import (
 	"bytes"

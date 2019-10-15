@@ -1,4 +1,4 @@
-package finger
+package node
 
 import (
 	"bytes"
@@ -10,19 +10,20 @@ import (
 )
 
 // Table contains nodes in network for lookups
-type Table []*Finger
+type Table []*RemoteNode
 
 // Finger finger
-type Finger struct {
-	ID scale.Key
-}
+// type Finger struct {
+// 	ID   scale.Key
+// 	Addr string
+// }
 
 // NewFingerTable create and populate a finger table
-func NewFingerTable(m int, ID scale.Key) Table {
-	ft := make([]*Finger, m)
+func NewFingerTable(n *Node) Table {
+	ft := make([]*scale.RemoteNode, scale.M)
 
 	for i := range ft {
-		ft[i] = &Finger{ID: ID}
+		ft[i] = NewRemoteNode(n.Addr)
 	}
 
 	return ft

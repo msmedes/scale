@@ -55,26 +55,6 @@ func (r *RPC) Get(ctx context.Context, in *pb.GetRequest) (*pb.GetResponse, erro
 	return res, nil
 }
 
-// Set rpc wrapper for node.Set
-func (r *RPC) Set(ctx context.Context, in *pb.SetRequest) (*pb.Success, error) {
-	r.node.Set(keyspace.ByteArrayToKey(in.GetKey()), in.GetValue())
-
-	return &pb.Success{}, nil
-}
-
-// GetLocal rpc wrapper for node.store.Get
-func (r *RPC) GetLocal(ctx context.Context, in *pb.GetRequest) (*pb.GetResponse, error) {
-	val, err := r.node.GetLocal(keyspace.ByteArrayToKey(in.GetKey()))
-
-	if err != nil {
-		return nil, err
-	}
-
-	res := &pb.GetResponse{Value: val}
-
-	return res, nil
-}
-
 // SetLocal rpc wrapper for node.store.Set
 func (r *RPC) SetLocal(ctx context.Context, in *pb.SetRequest) (*pb.Success, error) {
 	r.node.SetLocal(keyspace.ByteArrayToKey(in.GetKey()), in.GetValue())
@@ -84,12 +64,54 @@ func (r *RPC) SetLocal(ctx context.Context, in *pb.SetRequest) (*pb.Success, err
 
 // FindSuccessor rpc wrapper for node.FindSuccessor
 func (r *RPC) FindSuccessor(ctx context.Context, in *pb.RemoteQuery) (*pb.RemoteNode, error) {
-	successor, _ := r.node.FindSuccessor(keyspace.ByteArrayToKey(in.Id))
+	successor, err := r.node.FindSuccessor(keyspace.ByteArrayToKey(in.Id))
+
+	if err != nil {
+		return nil, err
+	}
+
 	id := successor.GetID()
 
 	res := &pb.RemoteNode{
 		Id:   id[:],
 		Addr: successor.GetAddr(),
+	}
+
+	return res, nil
+}
+
+// ClosestPrecedingFinger returns the node that is the closest predecessor
+// of the ID
+func (r *RPC) ClosestPrecedingFinger(ctx context.Context, in *pb.RemoteQuery) (*pb.RemoteNode, error) {
+	closestPrecedingFinger, err := r.node.ClosestPrecedingFinger(keyspace.ByteArrayToKey(in.Id))
+
+	if err != nil {
+		return nil, err
+	}
+
+	id := closestPrecedingFinger.GetID()
+
+	res := &pb.RemoteNode{
+		Id:   id[:],
+		Addr: closestPrecedingFinger.GetAddr(),
+	}
+
+	return res, nil
+}
+
+// FindPredecessor returns the predecessor of the input key
+func (r *RPC) FindPredecessor(ctx context.Context, in *pb.RemoteQuery) (*pb.RemoteNode, error) {
+	predecessor, err := r.node.FindPredecessor(keyspace.ByteArrayToKey(in.Id))
+
+	if err != nil {
+		return nil, err
+	}
+
+	id := predecessor.GetID()
+
+	res := &pb.RemoteNode{
+		Id:   id[:],
+		Addr: predecessor.GetAddr(),
 	}
 
 	return res, nil
@@ -148,6 +170,13 @@ func (r *RPC) Notify(ctx context.Context, in *pb.RemoteNode) (*pb.Success, error
 	return &pb.Success{}, nil
 }
 
+// Set rpc wrapper for node.Set
+func (r *RPC) Set(ctx context.Context, in *pb.SetRequest) (*pb.Success, error) {
+	r.node.Set(keyspace.ByteArrayToKey(in.GetKey()), in.GetValue())
+
+	return &pb.Success{}, nil
+}
+
 // GetNodeMetadata return metadata about this node
 func (r *RPC) GetNodeMetadata(context.Context, *pb.Empty) (*pb.NodeMetadata, error) {
 	id := r.node.GetID()
@@ -190,6 +219,19 @@ func (r *RPC) GetNodeMetadata(context.Context, *pb.Empty) (*pb.NodeMetadata, err
 	}
 
 	return meta, nil
+}
+
+// GetLocal rpc wrapper for node.store.Get
+func (r *RPC) GetLocal(ctx context.Context, in *pb.GetRequest) (*pb.GetResponse, error) {
+	val, err := r.node.GetLocal(keyspace.ByteArrayToKey(in.GetKey()))
+
+	if err != nil {
+		return nil, err
+	}
+
+	res := &pb.GetResponse{Value: val}
+
+	return res, nil
 }
 
 // ServerListen start up the server
