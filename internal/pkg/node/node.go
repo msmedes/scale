@@ -181,16 +181,25 @@ func (node *Node) Join(addr string) {
 
 // GetLocal return a value stored on this node
 func (node *Node) GetLocal(key scale.Key) ([]byte, error) {
+	node.RLock()
+	defer node.RUnlock()
+
 	return node.store.Get(key), nil
 }
 
 // SetLocal set a value in the local store
 func (node *Node) SetLocal(key scale.Key, value []byte) error {
+	node.RLock()
+	defer node.RUnlock()
+
 	return node.store.Set(key, value)
 }
 
 // Get return a value stored on this node
 func (node *Node) Get(key scale.Key) ([]byte, error) {
+	node.RLock()
+	defer node.RUnlock()
+
 	succ, err := node.FindSuccessor(key)
 	remoteNode := NewRemoteNode(succ.GetAddr(), node)
 
@@ -208,6 +217,9 @@ func (node *Node) Get(key scale.Key) ([]byte, error) {
 
 // Set set a value in the local store
 func (node *Node) Set(key scale.Key, value []byte) error {
+	node.RLock()
+	defer node.RUnlock()
+
 	succ, err := node.FindSuccessor(key)
 	remoteNode := NewRemoteNode(succ.GetAddr(), node)
 
@@ -250,10 +262,6 @@ func (node *Node) FindSuccessor(id scale.Key) (scale.RemoteNode, error) {
 		node.Logger.Fatal(err)
 	}
 
-	// return &RemoteNode{
-	// 	ID:   keyspace.ByteArrayToKey(successor.Id),
-	// 	Addr: successor.Addr,
-	// }, nil
 	return NewRemoteNode(successor.Addr, node), nil
 }
 
@@ -262,6 +270,7 @@ func (node *Node) FindSuccessor(id scale.Key) (scale.RemoteNode, error) {
 func (node *Node) closestPrecedingNode(id scale.Key) scale.Key {
 	node.RLock()
 	defer node.RUnlock()
+
 	// I think this could be implemented as binary search?
 	for i := scale.M - 1; i >= 0; i-- {
 		finger := node.fingerTable[i]
@@ -300,9 +309,10 @@ func (node *Node) GetSuccessor() (scale.RemoteNode, error) {
 
 // Shutdown leave the network
 func (node *Node) Shutdown() {
-	close(node.shutdownChannel)
 	node.RLock()
 	defer node.RUnlock()
+
+	close(node.shutdownChannel)
 
 	if !keyspace.Equal(node.ID, node.successor.ID) {
 	}
