@@ -5,11 +5,11 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/msmedes/scale/internal/pkg/finger"
 	"github.com/msmedes/scale/internal/pkg/keyspace"
-	"github.com/msmedes/scale/internal/pkg/rpc"
 	pb "github.com/msmedes/scale/internal/pkg/rpc/proto"
 	"github.com/msmedes/scale/internal/pkg/scale"
 	"github.com/msmedes/scale/internal/pkg/store"
@@ -17,11 +17,12 @@ import (
 )
 
 // StabilizeInterval how often to execute stabilization in seconds
-const StabilizeInterval = 3
+const StabilizeInterval = 1
 
 // Node main node class
 type Node struct {
 	scale.Node
+	sync.RWMutex
 
 	ID                scale.Key
 	Addr              string
@@ -32,17 +33,19 @@ type Node struct {
 	store             *store.MemoryStore
 	Logger            *zap.SugaredLogger
 	remoteConnections map[scale.Key]*RemoteNode
+	shutdownChannel   chan struct{}
 }
 
 // NewNode create a new node
 func NewNode(addr string) *Node {
 	port := addr[strings.LastIndex(addr, ":")+1:]
 	node := &Node{
-		ID:                keyspace.GenerateKey(port),
+		ID:                keyspace.GenerateKey(addr),
 		Addr:              addr,
 		Port:              port,
 		store:             store.NewMemoryStore(),
 		remoteConnections: make(map[scale.Key]*RemoteNode),
+		shutdownChannel:   make(chan struct{}),
 	}
 
 	node.fingerTable = finger.NewFingerTable(scale.M, node.ID)
@@ -61,15 +64,16 @@ func (node *Node) GetAddr() string {
 	return node.Addr
 }
 
-
 // GetPort getter for port
 func (node *Node) GetPort() string {
 	return node.Port
 }
+
 // GetFingerTableIDs return an array of IDs in the table
 func (node *Node) GetFingerTableIDs() []scale.Key {
+	node.RLock()
+	defer node.RUnlock()
 	var keys []scale.Key
-
 
 	for _, k := range node.fingerTable {
 		keys = append(keys, k.ID)
@@ -94,6 +98,9 @@ func (node *Node) StabilizationStart() {
 			if next == scale.M {
 				next = 0
 			}
+		case <-node.shutdownChannel:
+			ticker.Stop()
+			return
 		}
 	}
 }
@@ -134,11 +141,11 @@ func (node *Node) transferKey(key scale.Key, remote *RemoteNode) {
 
 // Join join an existing network via another node
 func (node *Node) Join(addr string) {
+	var remoteNode *RemoteNode
 	node.Logger.Infof("joining network via node at %s", addr)
 
 	// create a client for the node we are trying to join
-	remoteNode := NewRemoteNode(addr, node)
-	node.remoteConnections[remoteNode.ID] = remoteNode
+	remoteNode = NewRemoteNode(addr, node)
 
 	// search for the successor to this node
 	successor, err := remoteNode.RPC.FindSuccessor(
@@ -152,13 +159,7 @@ func (node *Node) Join(addr string) {
 
 	// if the successor is not the node we are joining add it to remoteConnections
 	if !ok {
-		remoteNode = &RemoteNode{
-			ID:   successorID,
-			Addr: successor.Addr,
-			RPC:  rpc.NewClient(successor.Addr),
-		}
-
-		node.remoteConnections[successorID] = remoteNode
+		remoteNode = NewRemoteNode(successor.Addr, node)
 	}
 
 	if err != nil {
@@ -249,15 +250,18 @@ func (node *Node) FindSuccessor(id scale.Key) (scale.RemoteNode, error) {
 		node.Logger.Fatal(err)
 	}
 
-	return &RemoteNode{
-		ID:   keyspace.ByteArrayToKey(successor.Id),
-		Addr: successor.Addr,
-	}, nil
+	// return &RemoteNode{
+	// 	ID:   keyspace.ByteArrayToKey(successor.Id),
+	// 	Addr: successor.Addr,
+	// }, nil
+	return NewRemoteNode(successor.Addr, node), nil
 }
 
 // closestPrecedingNode returns the node in the finger table
 // that is...the closest preceding node in the circle
 func (node *Node) closestPrecedingNode(id scale.Key) scale.Key {
+	node.RLock()
+	defer node.RUnlock()
 	// I think this could be implemented as binary search?
 	for i := scale.M - 1; i >= 0; i-- {
 		finger := node.fingerTable[i]
@@ -272,6 +276,9 @@ func (node *Node) closestPrecedingNode(id scale.Key) scale.Key {
 
 // GetPredecessor returns the node's predecessor
 func (node *Node) GetPredecessor() (scale.RemoteNode, error) {
+	node.RLock()
+	defer node.RUnlock()
+
 	if node.predecessor != nil {
 		return node.predecessor, nil
 	}
@@ -281,6 +288,9 @@ func (node *Node) GetPredecessor() (scale.RemoteNode, error) {
 
 // GetSuccessor retunrs the node's successor
 func (node *Node) GetSuccessor() (scale.RemoteNode, error) {
+	node.RLock()
+	defer node.RUnlock()
+
 	if node.successor != nil {
 		return node.successor, nil
 	}
@@ -290,37 +300,52 @@ func (node *Node) GetSuccessor() (scale.RemoteNode, error) {
 
 // Shutdown leave the network
 func (node *Node) Shutdown() {
-	node.Logger.Info("exiting")
+	close(node.shutdownChannel)
+	node.RLock()
+	defer node.RUnlock()
+
+	if !keyspace.Equal(node.ID, node.successor.ID) {
+	}
+	for _, remoteConnection := range node.remoteConnections {
+		remoteConnection.clientConnection.Close()
+	}
 }
 
 func (node *Node) stabilize() {
-	// var succPredecessor pb.RemoteNode
-	// var err error
 
-	if bytes.Equal(node.successor.ID[:], node.ID[:]) {
+	node.RLock()
+	defer node.RUnlock()
+
+	if !keyspace.Equal(node.successor.ID, node.ID) {
+		succPredecessor, err := node.successor.RPC.GetPredecessor(context.Background(), &pb.Empty{})
+
+		if err != nil {
+			node.Logger.Errorf("error retrieving predecessor from successor %s", keyspace.KeyToString(node.successor.ID))
+			node.Logger.Error(err)
+		}
+
+		// The successor may not yet have a predecessor, meaning it has not
+		// yet had a chance to update it's predecessor.  In that case we
+		// notify the successor that we believe we are its predecessor.
+		if succPredecessor.Present && keyspace.Between(keyspace.ByteArrayToKey(succPredecessor.Id), node.ID, node.successor.ID) {
+			node.successor = NewRemoteNode(succPredecessor.Addr, node)
+			node.Logger.Infof("successor set to %s", keyspace.KeyToString(node.successor.ID))
+		}
+
+		// tell the successor that node is the predecessor now
+		node.successor.RPC.Notify(context.Background(), &pb.RemoteNode{Id: node.ID[:], Addr: node.Addr})
+
 		return
 	}
-
-	succPredecessor, err := node.successor.RPC.GetPredecessor(context.Background(), &pb.Empty{})
-
-	if err != nil {
-		node.Logger.Errorf("error retrieving predecessor from successor %s", keyspace.KeyToString(node.successor.ID))
-		node.Logger.Error(err)
-	}
-
-	// The successor may not yet have a predecessor, meaning it has not
-	// yet had a chance to update it's predecessor.  In that case we
-	// notify the successor that we believe we are its predecessor.
-	if succPredecessor.Present && keyspace.Between(keyspace.ByteArrayToKey(succPredecessor.Id), node.ID, node.successor.ID) {
-		node.successor = NewRemoteNode(succPredecessor.Addr, node)
+	if node.predecessor != nil {
+		node.successor = node.predecessor
 		node.Logger.Infof("successor set to %s", keyspace.KeyToString(node.successor.ID))
 	}
-
-	// tell the successor that node is the predecessor now
-	node.successor.RPC.Notify(context.Background(), &pb.RemoteNode{Id: node.ID[:], Addr: node.Addr})
 }
 
 func (node *Node) checkPredecessor() {
+	node.RLock()
+	defer node.RUnlock()
 	predecessor := node.predecessor
 
 	if predecessor == nil {
@@ -337,9 +362,14 @@ func (node *Node) checkPredecessor() {
 
 // Notify is called when another node thinks it is our predecessor
 func (node *Node) Notify(id scale.Key, addr string) error {
+	node.RLock()
+	defer node.RUnlock()
 	if node.predecessor == nil || keyspace.Between(id, node.predecessor.ID, node.ID) {
 		node.predecessor = NewRemoteNode(addr, node)
-		// Then we transfer keys
+		node.predecessor.RPC.TransferKeys(context.Background(), &pb.KeyTransferRequest{
+			Id:   node.ID[:],
+			Addr: node.Addr,
+		})
 		node.Logger.Infof("predecessor set to %s", keyspace.KeyToString(id))
 
 		return nil
@@ -349,6 +379,9 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 }
 
 func (node *Node) fixNextFinger(next int) int {
+	node.RLock()
+	defer node.RUnlock()
+
 	nextHash := finger.Math(node.ID[:], next, scale.M)
 	successor, _ := node.FindSuccessor(keyspace.ByteArrayToKey(nextHash))
 	finger := &finger.Finger{ID: successor.GetID()}
