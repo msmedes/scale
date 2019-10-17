@@ -91,7 +91,6 @@ func (node *Node) StabilizationStart() {
 	for {
 		select {
 		case <-ticker.C:
-			next = node.fixNextFinger(next)
 			node.stabilize()
 			node.checkPredecessor()
 
@@ -143,42 +142,61 @@ func (node *Node) transferKey(key scale.Key, remote *RemoteNode) {
 // This implements the pseudocode for in fig. 5 of the new paper
 // for concurrent joins
 func (node *Node) Join(addr string) {
-	var remoteNode *RemoteNode
 	node.Logger.Infof("joining network via node at %s", addr)
+	id := node.ID
 
-	// create a client for the node we are trying to join
+	var remoteNode *RemoteNode
 	remoteNode = NewRemoteNode(addr, node)
 
-	// search for the successor to this node
-	successor, err := remoteNode.RPC.FindSuccessor(
+	predecessor, err := remoteNode.RPC.FindPredecessor(
 		context.Background(),
-		&pb.RemoteQuery{Id: node.ID[:]},
+		&pb.RemoteQuery{Id: id[:]},
 	)
 
-	successorID := keyspace.ByteArrayToKey(successor.Id)
-
-	_, ok := node.remoteConnections[successorID]
-
-	// if the successor is not the node we are joining add it to remoteConnections
-	if !ok {
-		remoteNode = NewRemoteNode(successor.Addr, node)
-	}
+	s := NewRemoteNode(predecessor.GetAddr(), node)
+	p := s
 
 	if err != nil {
 		node.Logger.Fatal(err)
 	}
 
-	node.successor = remoteNode
+	for !keyspace.BetweenRightInclusive(node.ID, p.ID, s.ID) && !keyspace.Equal(p.ID, s.ID) {
+		p = s
+		successor, err := p.RPC.GetSuccessor(context.Background(), &pb.Empty{})
 
-	if !keyspace.Equal(node.ID, node.successor.ID) {
-		node.successor.RPC.TransferKeys(context.Background(), &pb.KeyTransferRequest{
-			Id:   node.ID[:],
-			Addr: node.Addr,
-		})
+		if err != nil {
+			node.Logger.Fatal(err)
+		}
+
+		s = NewRemoteNode(successor.GetAddr(), node)
+
 	}
 
-	node.Logger.Infof("found successor: %s", keyspace.KeyToString(node.successor.ID))
+	node.successor = s
+	node.predecessor = p
+
+	p.RPC.Notify(context.Background(), &pb.RemoteNode{Id: id[:], Addr: node.GetAddr(), Present: true})
+	s.RPC.Notify(context.Background(), &pb.RemoteNode{Id: id[:], Addr: node.GetAddr(), Present: true})
+
+	node.bootstrap(s)
+
 	node.Logger.Info("joined network")
+}
+
+func (node *Node) bootstrap(n *RemoteNode) {
+	for i := 0; i < scale.M; i++ {
+		start := FingerMath(node.ID[:], i, scale.M)
+		p, _ := n.RPC.FindSuccessor(context.Background(), &pb.RemoteQuery{Id: start})
+		var s *RemoteNode
+
+		for bytes.Compare(p.GetId(), start) >= 0 {
+			pred := NewRemoteNode(p.GetAddr(), node)
+			s = pred
+			p, _ = pred.RPC.GetSuccessor(context.Background(), &pb.Empty{})
+		}
+
+		node.fingerTable[i] = s
+	}
 }
 
 // GetLocal return a value stored on this node
@@ -243,24 +261,29 @@ func (node *Node) FindPredecessor(id scale.Key) (scale.RemoteNode, error) {
 	defer node.RUnlock()
 
 	var closestPrecedingRPC *pb.RemoteNode
+	var err error
 
-	if keyspace.Equal(node.ID, node.successor.ID) {
+	if keyspace.Equal(node.ID, node.predecessor.ID) {
 		return NewRemoteNode(node.Addr, node), nil
 	}
 
 	closestPreceding := NewRemoteNode(node.Addr, node)
-	predecessorSuccessor, _ := closestPreceding.RPC.GetSuccessor(context.Background(), &pb.Empty{})
-	predecessorSuccessorRemote := NewRemoteNode(predecessorSuccessor.Addr, node)
+	predecessorSuccessor, _ := node.GetSuccessor()
 
-	if keyspace.Equal(closestPreceding.ID, predecessorSuccessorRemote.ID) {
+	if keyspace.Equal(closestPreceding.ID, predecessorSuccessor.GetID()) {
 		return closestPreceding, nil
 	}
 
-	for !keyspace.BetweenRightInclusive(id, closestPreceding.ID, predecessorSuccessorRemote.ID) {
-		closestPrecedingRPC, _ = closestPreceding.RPC.ClosestPrecedingFinger(context.Background(), &pb.RemoteQuery{Id: id[:]})
+	for !keyspace.BetweenRightInclusive(id, closestPreceding.ID, predecessorSuccessor.GetID()) {
+		closestPrecedingRPC, err = closestPreceding.RPC.ClosestPrecedingFinger(context.Background(), &pb.RemoteQuery{Id: id[:]})
+
+		if err != nil {
+			node.Logger.Fatal(err)
+		}
+
 		closestPreceding = NewRemoteNode(closestPrecedingRPC.Addr, node)
-		predecessorSuccessor, _ = closestPreceding.RPC.GetSuccessor(context.Background(), &pb.Empty{})
-		predecessorSuccessorRemote = NewRemoteNode(predecessorSuccessor.Addr, node)
+		predRes, _ := closestPreceding.RPC.GetSuccessor(context.Background(), &pb.Empty{})
+		predecessorSuccessor = NewRemoteNode(predRes.GetAddr(), node)
 	}
 
 	return closestPreceding, nil
@@ -335,6 +358,7 @@ func (node *Node) Shutdown() {
 
 	if !keyspace.Equal(node.ID, node.successor.ID) {
 	}
+
 	for _, remoteConnection := range node.remoteConnections {
 		remoteConnection.clientConnection.Close()
 	}
@@ -351,7 +375,7 @@ func (node *Node) stabilize() {
 	x, err := node.predecessor.RPC.GetSuccessor(context.Background(), &pb.Empty{})
 
 	if err != nil {
-		node.Logger.Error(err)
+		node.Logger.Fatal(err)
 	}
 
 	if x.Present && keyspace.Between(keyspace.ByteArrayToKey(x.Id), node.predecessor.ID, node.ID) {
@@ -365,7 +389,7 @@ func (node *Node) stabilize() {
 	}
 
 	if x.Present && keyspace.Between(keyspace.ByteArrayToKey(x.Id), node.ID, node.successor.ID) {
-		node.fingerTable[1] = NewRemoteNode(x.Addr, node)
+		node.fingerTable[0] = NewRemoteNode(x.Addr, node)
 	}
 }
 
@@ -388,17 +412,27 @@ func (node *Node) checkPredecessor() {
 
 // Notify is called when another node thinks it is our predecessor
 func (node *Node) Notify(id scale.Key, addr string) error {
-	node.RLock()
-	defer node.RUnlock()
-	if node.predecessor == nil || keyspace.Between(id, node.predecessor.ID, node.ID) {
-		node.predecessor = NewRemoteNode(addr, node)
-		node.predecessor.RPC.TransferKeys(context.Background(), &pb.KeyTransferRequest{
-			Id:   node.ID[:],
-			Addr: node.Addr,
-		})
-		node.Logger.Infof("predecessor set to %s", keyspace.KeyToString(id))
+	if keyspace.Equal(node.ID, node.successor.ID) && keyspace.Equal(node.ID, node.predecessor.ID) {
+		remote := NewRemoteNode(addr, node)
+		node.fingerTable[0] = remote
+		node.successor = remote
+		node.predecessor = remote
+		node.bootstrap(remote)
 
 		return nil
+	}
+
+	if keyspace.Between(id, node.ID, node.successor.ID) {
+		successor := NewRemoteNode(addr, node)
+		node.fingerTable[0] = successor
+		node.successor = successor
+		node.bootstrap(successor)
+	}
+
+	if keyspace.Between(id, node.predecessor.ID, node.ID) {
+		predecessor := NewRemoteNode(addr, node)
+		node.predecessor = predecessor
+		node.bootstrap(predecessor)
 	}
 
 	return nil
