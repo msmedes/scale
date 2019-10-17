@@ -11,12 +11,6 @@ import (
 // Table contains nodes in network for lookups
 type Table []*RemoteNode
 
-// Finger finger
-// type Finger struct {
-// 	ID   scale.Key
-// 	Addr string
-// }
-
 // Great news, there are now two ways we need to initialize
 // a finger table, this is for when there is only one node
 // in the chord
