@@ -21,7 +21,6 @@ const StabilizeInterval = 1
 // Node main node class
 type Node struct {
 	scale.Node
-	sync.RWMutex
 
 	ID                scale.Key
 	Addr              string
@@ -33,11 +32,13 @@ type Node struct {
 	Logger            *zap.SugaredLogger
 	remoteConnections map[scale.Key]*RemoteNode
 	shutdownChannel   chan struct{}
+	mutex             sync.RWMutex
 }
 
 // NewNode create a new node
 func NewNode(addr string) *Node {
 	port := addr[strings.LastIndex(addr, ":")+1:]
+
 	node := &Node{
 		ID:                keyspace.GenerateKey(addr),
 		Addr:              addr,
@@ -71,8 +72,8 @@ func (node *Node) GetPort() string {
 
 // GetFingerTableIDs return an array of IDs in the table
 func (node *Node) GetFingerTableIDs() []scale.Key {
-	node.RLock()
-	defer node.RUnlock()
+	node.mutex.RLock()
+	defer node.mutex.RUnlock()
 	var keys []scale.Key
 
 	for _, k := range node.fingerTable {
@@ -245,8 +246,8 @@ func (node *Node) Set(key scale.Key, value []byte) error {
 
 //FindPredecessor finds the predecessor to the id
 func (node *Node) FindPredecessor(id scale.Key) (scale.RemoteNode, error) {
-	node.RLock()
-	defer node.RUnlock()
+	node.mutex.RLock()
+	defer node.mutex.RUnlock()
 
 	var closestPrecedingRPC *pb.RemoteNode
 	var err error
@@ -299,8 +300,8 @@ func (node *Node) FindSuccessor(id scale.Key) (scale.RemoteNode, error) {
 
 // ClosestPrecedingFinger returns the closest preceding finger to the id
 func (node *Node) ClosestPrecedingFinger(id scale.Key) (scale.RemoteNode, error) {
-	node.RLock()
-	defer node.RUnlock()
+	node.mutex.RLock()
+	defer node.mutex.RUnlock()
 
 	for i := scale.M - 1; i >= 0; i-- {
 		finger := node.fingerTable[i]
@@ -315,8 +316,8 @@ func (node *Node) ClosestPrecedingFinger(id scale.Key) (scale.RemoteNode, error)
 
 // GetPredecessor returns the node's predecessor
 func (node *Node) GetPredecessor() (scale.RemoteNode, error) {
-	node.RLock()
-	defer node.RUnlock()
+	node.mutex.RLock()
+	defer node.mutex.RUnlock()
 
 	if node.predecessor != nil {
 		return node.predecessor, nil
@@ -327,8 +328,8 @@ func (node *Node) GetPredecessor() (scale.RemoteNode, error) {
 
 // GetSuccessor retunrs the node's successor
 func (node *Node) GetSuccessor() (scale.RemoteNode, error) {
-	node.RLock()
-	defer node.RUnlock()
+	node.mutex.RLock()
+	defer node.mutex.RUnlock()
 
 	if node.successor != nil {
 		return node.successor, nil
@@ -339,8 +340,8 @@ func (node *Node) GetSuccessor() (scale.RemoteNode, error) {
 
 // Shutdown leave the network
 func (node *Node) Shutdown() {
-	node.RLock()
-	defer node.RUnlock()
+	node.mutex.RLock()
+	defer node.mutex.RUnlock()
 
 	close(node.shutdownChannel)
 
@@ -353,9 +354,6 @@ func (node *Node) Shutdown() {
 }
 
 func (node *Node) stabilize() {
-	node.RLock()
-	defer node.RUnlock()
-
 	if keyspace.Equal(node.successor.ID, node.ID) {
 		return
 	}
@@ -367,7 +365,9 @@ func (node *Node) stabilize() {
 	}
 
 	if x.Present && keyspace.Between(keyspace.ByteArrayToKey(x.Id), node.predecessor.ID, node.ID) {
+		node.mutex.Lock()
 		node.predecessor = NewRemoteNode(x.Addr, node)
+		node.mutex.Unlock()
 	}
 
 	x, err = node.successor.RPC.GetPredecessor(context.Background(), &pb.Empty{})
@@ -377,29 +377,34 @@ func (node *Node) stabilize() {
 	}
 
 	if x.Present && keyspace.Between(keyspace.ByteArrayToKey(x.Id), node.ID, node.successor.ID) {
+		node.mutex.Lock()
 		node.fingerTable[0] = NewRemoteNode(x.Addr, node)
+		node.mutex.Unlock()
 	}
 }
 
 func (node *Node) checkPredecessor() {
-	node.RLock()
-	defer node.RUnlock()
+	node.mutex.Lock()
+	defer node.mutex.Unlock()
 	predecessor := node.predecessor
+	id := predecessor.GetID()
 
-	if predecessor == nil || keyspace.Equal(predecessor.ID, node.ID) {
+	if predecessor == nil || keyspace.Equal(id, node.GetID()) {
 		return
 	}
 
 	_, err := predecessor.RPC.Ping(context.Background(), &pb.Empty{})
 
 	if err != nil {
-		node.Logger.Infof("predecessor unresponsive. removing %s", keyspace.KeyToString(predecessor.GetID()))
 		node.predecessor = nil
 	}
 }
 
 // Notify is called when another node thinks it is our predecessor
 func (node *Node) Notify(id scale.Key, addr string) error {
+	node.mutex.Lock()
+	defer node.mutex.Unlock()
+
 	if keyspace.Equal(node.ID, node.successor.ID) && keyspace.Equal(node.ID, node.predecessor.ID) {
 		remote := NewRemoteNode(addr, node)
 		node.fingerTable[0] = remote
@@ -427,8 +432,8 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 }
 
 func (node *Node) fixNextFinger(next int) int {
-	node.RLock()
-	defer node.RUnlock()
+	node.mutex.Lock()
+	defer node.mutex.Unlock()
 
 	nextHash := FingerMath(node.ID[:], next, scale.M)
 	successor, _ := node.FindSuccessor(keyspace.ByteArrayToKey(nextHash))

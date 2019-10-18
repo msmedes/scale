@@ -15,25 +15,31 @@ func TestMemoryStore(t *testing.T) {
 	key1 := keyspace.StringToKey("hello")
 	val1 := []byte("world")
 
-	store.Set(key1, val1)
-	got := store.Get(key1)
+	t.Run("set and get", func(t *testing.T) {
+		store.Set(key1, val1)
+		got := store.Get(key1)
 
-	if !bytes.Equal(got, val1) {
-		t.Errorf("expected %x got %x", val1, got)
-	}
+		if !bytes.Equal(got, val1) {
+			t.Errorf("expected %x got %x", val1, got)
+		}
+	})
 
-	keys := store.Keys()
+	t.Run("keys", func(t *testing.T) {
+		keys := store.Keys()
 
-	if !keyspace.Equal(keys[0], key1) {
-		t.Errorf("expected keys[0] to be %x got %x", key1, keys[0])
-	}
+		if !keyspace.Equal(keys[0], key1) {
+			t.Errorf("expected keys[0] to be %x got %x", key1, keys[0])
+		}
+	})
 
-	store.Del(key1)
-	got = store.Get(key1)
+	t.Run("del", func(t *testing.T) {
+		store.Del(key1)
+		got := store.Get(key1)
 
-	if !bytes.Equal(got, nil) {
-		t.Errorf("expected %x got %x", val1, got)
-	}
+		if !bytes.Equal(got, nil) {
+			t.Errorf("expected %x got %x", val1, got)
+		}
+	})
 }
 
 func TestMemoryStoreThreadSafety(t *testing.T) {
