@@ -201,25 +201,16 @@ func (node *Node) bootstrap(n *RemoteNode) {
 
 // GetLocal return a value stored on this node
 func (node *Node) GetLocal(key scale.Key) ([]byte, error) {
-	node.RLock()
-	defer node.RUnlock()
-
 	return node.store.Get(key), nil
 }
 
 // SetLocal set a value in the local store
 func (node *Node) SetLocal(key scale.Key, value []byte) error {
-	node.RLock()
-	defer node.RUnlock()
-
 	return node.store.Set(key, value)
 }
 
 // Get return a value stored on this node
 func (node *Node) Get(key scale.Key) ([]byte, error) {
-	node.RLock()
-	defer node.RUnlock()
-
 	succ, err := node.FindSuccessor(key)
 	remoteNode := NewRemoteNode(succ.GetAddr(), node)
 
@@ -237,9 +228,6 @@ func (node *Node) Get(key scale.Key) ([]byte, error) {
 
 // Set set a value in the local store
 func (node *Node) Set(key scale.Key, value []byte) error {
-	node.RLock()
-	defer node.RUnlock()
-
 	succ, err := node.FindSuccessor(key)
 	remoteNode := NewRemoteNode(succ.GetAddr(), node)
 
