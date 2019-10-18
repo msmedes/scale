@@ -3,7 +3,7 @@
 default: test lint
 
 test:
-	@go test ./... -cover -v
+	@go test ./... -cover -v -race
 
 lint:
 	@$(shell go list -f {{.Target}} golang.org/x/lint/golint) ./...
@@ -11,9 +11,9 @@ lint:
 serve:
 	@go run cmd/scale/main.go
 
-race:
+serve.race:
 	@go run -race cmd/scale/main.go
-	
+
 codegen:
 	@protoc -I internal/pkg/rpc internal/pkg/rpc/proto/scale.proto --go_out=plugins=grpc:internal/pkg/rpc
 
