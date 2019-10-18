@@ -66,7 +66,7 @@ func TestCheckPredecessor(t *testing.T) {
 	})
 
 	t.Run("removes predecessor if there is an error pinging it", func(t *testing.T) {
-		n.predecessor = NewRemoteNode(Addr2, n)
+		n.predecessor = NewRemoteNode(Addr2)
 		n.checkPredecessor()
 		p, err := n.GetPredecessor()
 
@@ -82,9 +82,26 @@ func TestCheckPredecessor(t *testing.T) {
 
 func TestJoin(t *testing.T) {
 	t.Run("one other node in network", func(t *testing.T) {
-		n1 := NewNode(Addr1)
 		n2 := NewNode(Addr2)
 
-		n1.Join(n2.GetAddr())
+		n1 := &RemoteNodeMock{
+			Addr: Addr1,
+			ID:   keyspace.GenerateKey(Addr1),
+		}
+
+		n1.findPredecessorResponse = &RemoteNodeMock{
+			Addr: n1.GetAddr(),
+			ID:   keyspace.GenerateKey(n1.GetAddr()),
+		}
+
+		n2.Join(n1)
+
+		if n2.predecessor.GetID() != n1.GetID() {
+			t.Fatalf("expected n2.predecessor to be n1. got: %x", n2.predecessor.GetID())
+		}
+
+		if n2.successor.GetID() != n1.GetID() {
+			t.Fatalf("expected n2.successor to be n1. got: %x", n2.successor.GetID())
+		}
 	})
 }

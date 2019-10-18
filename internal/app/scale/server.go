@@ -21,20 +21,21 @@ var (
 // server to accept requests from remote nodes and invoke methods on the node object
 // also, fire up the background process to periodically stabilize the node's finger table
 func ServerListen() {
-	node := node.NewNode(addr)
-	rpcServer := rpc.NewRPC(node)
+	n := node.NewNode(addr)
+	rpcServer := rpc.NewRPC(n)
 	graphql := graphql.NewGraphQL(webAddr, rpcServer)
 
-	defer node.Shutdown()
+	defer n.Shutdown()
 
 	go graphql.ServerListen()
 	go rpcServer.ServerListen()
 
 	if len(join) > 0 {
-		node.Join(join)
+		remote := node.NewRemoteNode(join)
+		n.Join(remote)
 	}
 
-	go node.StabilizationStart()
+	go n.StabilizationStart()
 
 	select {}
 }
