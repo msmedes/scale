@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	gql "github.com/graphql-go/graphql"
@@ -20,19 +21,24 @@ type reqBody struct {
 type GraphQL struct {
 	addr   string
 	schema gql.Schema
-	logger *zap.SugaredLogger
+	sugar  *zap.SugaredLogger
 	rpc    *rpc.RPC
 }
 
 // NewGraphQL Instantiate new GraphQL instance
-func NewGraphQL(addr string, logger *zap.SugaredLogger, r *rpc.RPC) *GraphQL {
-	obj := &GraphQL{
-		addr:   addr,
-		logger: logger,
-		rpc:    r,
-	}
+func NewGraphQL(addr string, r *rpc.RPC) *GraphQL {
+	obj := &GraphQL{addr: addr, rpc: r}
 
 	obj.buildSchema()
+
+	logger, err := zap.NewDevelopment()
+
+	if err != nil {
+		log.Fatalf("failed to init logger: %v", err)
+	}
+
+	sugar := logger.Sugar()
+	obj.sugar = sugar
 
 	return obj
 }
@@ -53,10 +59,13 @@ func (g *GraphQL) ServerListen() {
 		json.NewEncoder(w).Encode(result)
 	})
 
+	g.sugar.Infof("listening: %s", g.addr)
+	defer g.sugar.Sync()
+
 	err := http.ListenAndServe(g.addr, nil)
 
 	if err != nil {
-		g.logger.Fatalf("failed to listen: %v", err)
+		g.sugar.Fatalf("failed to listen: %v", err)
 	}
 }
 
@@ -67,7 +76,7 @@ func (g *GraphQL) execute(query string) *gql.Result {
 	})
 
 	if len(result.Errors) > 0 {
-		g.logger.Infof("wrong result, unexpected errors: %v", result.Errors)
+		g.sugar.Infof("wrong result, unexpected errors: %v", result.Errors)
 	}
 
 	return result

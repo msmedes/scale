@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"log"
 	"net"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -18,17 +19,27 @@ type RPC struct {
 	node   scale.Node
 	sugar  *zap.SugaredLogger
 	logger *zap.Logger
-	addr   string
 }
 
 // NewRPC create a new rpc
-func NewRPC(node scale.Node, logger *zap.Logger, sugar *zap.SugaredLogger, addr string) *RPC {
-	return &RPC{
-		logger: logger,
-		sugar:  sugar,
-		node:   node,
-		addr:   addr,
+func NewRPC(node scale.Node) *RPC {
+	rpc := &RPC{node: node}
+
+	logger, err := zap.NewDevelopment(
+		zap.Fields(
+			zap.String("node", keyspace.KeyToString(node.GetID())),
+		),
+	)
+
+	if err != nil {
+		log.Fatalf("failed to init logger: %v", err)
 	}
+
+	sugar := logger.Sugar()
+	rpc.logger = logger
+	rpc.sugar = sugar
+
+	return rpc
 }
 
 // TransferKeys proxy to node.TransferKeys
@@ -236,7 +247,7 @@ func (r *RPC) GetLocal(ctx context.Context, in *pb.GetRequest) (*pb.GetResponse,
 
 // ServerListen start up the server
 func (r *RPC) ServerListen() {
-	server, err := net.Listen("tcp", r.addr)
+	server, err := net.Listen("tcp", r.node.GetAddr())
 
 	if err != nil {
 		r.sugar.Fatalf("failed to listen: %v", err)
@@ -249,5 +260,8 @@ func (r *RPC) ServerListen() {
 	)
 
 	pb.RegisterScaleServer(grpcServer, r)
+
+	r.sugar.Infof("listening: %s", r.node.GetAddr())
+
 	grpcServer.Serve(server)
 }
