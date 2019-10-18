@@ -12,6 +12,7 @@ type Key = [M / 8]byte
 type RemoteNode interface {
 	GetAddr() string
 	GetID() Key
+	FindPredecessor(Key) (RemoteNode, error)
 }
 
 // Node represents the current node and operations it is responsible for

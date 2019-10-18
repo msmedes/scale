@@ -20,7 +20,7 @@ func NewScaleFingerTable(node *Node) Table {
 	ft := make([]*RemoteNode, scale.M)
 
 	for i := range ft {
-		ft[i] = NewRemoteNode(node.Addr, node)
+		ft[i] = NewRemoteNode(node.addr)
 	}
 
 	return ft

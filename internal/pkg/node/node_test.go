@@ -6,10 +6,13 @@ import (
 	"github.com/msmedes/scale/internal/pkg/keyspace"
 )
 
-const Addr = "0.0.0.0:3000"
+const (
+	Addr1 = "0.0.0.0:3000"
+	Addr2 = "0.0.0.0:3001"
+)
 
 func TestNewNode(t *testing.T) {
-	n := NewNode(Addr)
+	n := NewNode(Addr1)
 
 	t.Run("sets successor to itself", func(t *testing.T) {
 		s, err := n.GetSuccessor()
@@ -47,7 +50,7 @@ func TestNewNode(t *testing.T) {
 }
 
 func TestCheckPredecessor(t *testing.T) {
-	n := NewNode(Addr)
+	n := NewNode(Addr1)
 
 	t.Run("does nothing when predecessor is itself", func(t *testing.T) {
 		n.checkPredecessor()
@@ -63,7 +66,7 @@ func TestCheckPredecessor(t *testing.T) {
 	})
 
 	t.Run("removes predecessor if there is an error pinging it", func(t *testing.T) {
-		n.predecessor = NewRemoteNode("0.0.0.0:3001", n)
+		n.predecessor = NewRemoteNode(Addr2)
 		n.checkPredecessor()
 		p, err := n.GetPredecessor()
 
@@ -73,6 +76,32 @@ func TestCheckPredecessor(t *testing.T) {
 
 		if p != nil {
 			t.Errorf("expected to have removed predecessor")
+		}
+	})
+}
+
+func TestJoin(t *testing.T) {
+	t.Run("one other node in network", func(t *testing.T) {
+		n2 := NewNode(Addr2)
+
+		n1 := &RemoteNodeMock{
+			Addr: Addr1,
+			ID:   keyspace.GenerateKey(Addr1),
+		}
+
+		n1.findPredecessorResponse = &RemoteNodeMock{
+			Addr: n1.GetAddr(),
+			ID:   keyspace.GenerateKey(n1.GetAddr()),
+		}
+
+		n2.Join(n1)
+
+		if n2.predecessor.GetID() != n1.GetID() {
+			t.Fatalf("expected n2.predecessor to be n1. got: %x", n2.predecessor.GetID())
+		}
+
+		if n2.successor.GetID() != n1.GetID() {
+			t.Fatalf("expected n2.successor to be n1. got: %x", n2.successor.GetID())
 		}
 	})
 }

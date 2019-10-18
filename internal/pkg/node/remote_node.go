@@ -1,6 +1,8 @@
 package node
 
 import (
+	"context"
+
 	"github.com/msmedes/scale/internal/pkg/keyspace"
 	"github.com/msmedes/scale/internal/pkg/rpc"
 	pb "github.com/msmedes/scale/internal/pkg/rpc/proto"
@@ -28,20 +30,30 @@ func (r *RemoteNode) GetAddr() string {
 	return r.Addr
 }
 
-// NewRemoteNode creates a new RemoteNode with an RPC client.
-// This will reuse RPC connections if given the same address
-func NewRemoteNode(addr string, node *Node) *RemoteNode {
-	var remoteNode *RemoteNode
-	var ok bool
+// FindPredecessor proxy for RPC call
+func (r *RemoteNode) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
+	predecessor, err := r.RPC.FindPredecessor(
+		context.Background(),
+		&pb.RemoteQuery{Id: key[:]},
+	)
 
-	id := keyspace.GenerateKey(addr)
-	remoteNode, ok = node.remoteConnections[id]
-
-	if !ok {
-		client, conn := rpc.NewClient(addr)
-		remoteNode = &RemoteNode{ID: id, Addr: addr, RPC: client, clientConnection: conn}
-		node.remoteConnections[id] = remoteNode
+	if err != nil {
+		return nil, err
 	}
 
-	return remoteNode
+	return NewRemoteNode(predecessor.GetAddr()), nil
+}
+
+// NewRemoteNode creates a new RemoteNode with an RPC client.
+// This will reuse RPC connections if given the same address
+func NewRemoteNode(addr string) *RemoteNode {
+	id := keyspace.GenerateKey(addr)
+	client, conn := rpc.NewClient(addr)
+
+	return &RemoteNode{
+		ID:               id,
+		Addr:             addr,
+		RPC:              client,
+		clientConnection: conn,
+	}
 }

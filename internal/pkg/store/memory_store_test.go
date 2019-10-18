@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/msmedes/scale/internal/pkg/keyspace"
 )
@@ -47,22 +46,15 @@ func TestMemoryStoreThreadSafety(t *testing.T) {
 	key := keyspace.StringToKey("key")
 
 	var w sync.WaitGroup
-	w.Add(3)
+	w.Add(100)
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 100; i++ {
 		go func(j int) {
 			defer w.Done()
-			time.Sleep(time.Duration(j) * 10 * time.Millisecond)
 			str := fmt.Sprintf("val-%d", j)
 			store.Set(key, []byte(str))
 		}(i)
 	}
 
 	w.Wait()
-
-	got := string(store.Get(key))
-
-	if got != "val-2" {
-		t.Errorf("expected val-2 got %s", got)
-	}
 }
