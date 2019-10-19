@@ -1,8 +1,10 @@
 package node
 
 import (
+	"log"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/msmedes/scale/internal/pkg/keyspace"
 )
 
@@ -10,6 +12,16 @@ const (
 	Addr1 = "0.0.0.0:3000"
 	Addr2 = "0.0.0.0:3001"
 )
+
+func newAddr(t *testing.T) string {
+	id, err := uuid.NewRandom()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return id.String()
+}
 
 func TestNewNode(t *testing.T) {
 	n := NewNode(Addr1)
@@ -121,7 +133,7 @@ func TestJoin(t *testing.T) {
 }
 
 func TestClosestPrecedingFinger(t *testing.T) {
-	n := &Node{addr: "a", id: [4]byte{1}}
+	n := &Node{addr: newAddr(t), id: [4]byte{1}}
 	nRemote := n.toRemoteNode()
 	n.fingerTable = newFingerTable(nRemote)
 
@@ -165,9 +177,9 @@ func TestClosestPrecedingFinger(t *testing.T) {
 	})
 
 	t.Run("other vals in ft", func(t *testing.T) {
-		n.fingerTable[0] = newRemoteNodeWithID("b", [4]byte{2})
-		n.fingerTable[1] = newRemoteNodeWithID("c", [4]byte{4})
-		n.fingerTable[2] = newRemoteNodeWithID("d", [4]byte{8})
+		n.fingerTable[0] = newRemoteNodeWithID(newAddr(t), [4]byte{2})
+		n.fingerTable[1] = newRemoteNodeWithID(newAddr(t), [4]byte{4})
+		n.fingerTable[2] = newRemoteNodeWithID(newAddr(t), [4]byte{8})
 
 		key := [4]byte{5}
 
@@ -185,7 +197,7 @@ func TestClosestPrecedingFinger(t *testing.T) {
 
 func TestFindPredecessor(t *testing.T) {
 	t.Run("simple case - node only aware of itself", func(t *testing.T) {
-		n := &Node{addr: "a", id: [4]byte{1}}
+		n := &Node{addr: newAddr(t), id: [4]byte{1}}
 		n.predecessor = n.toRemoteNode()
 		n.successor = n.toRemoteNode()
 		key := [4]byte{0}
@@ -203,10 +215,10 @@ func TestFindPredecessor(t *testing.T) {
 	})
 
 	t.Run("2 nodes - hi key", func(t *testing.T) {
-		n1 := &Node{addr: "a", id: [4]byte{1}}
+		n1 := &Node{addr: newAddr(t), id: [4]byte{1}}
 
 		n2 := &RemoteNodeMock{
-			Addr:                   "b",
+			Addr:                   newAddr(t),
 			ID:                     [4]byte{2},
 			getSuccessorResponse:   n1.toRemoteNode(),
 			getPredecessorResponse: n1.toRemoteNode(),
@@ -230,19 +242,18 @@ func TestFindPredecessor(t *testing.T) {
 	})
 
 	t.Run("2 nodes - lo key", func(t *testing.T) {
-		t.Skip(`
-      this is where the pain is
-      also hard to test because need to mock out rpc
-      call thats happening because of node.go#285
-    `)
+		n1 := &Node{addr: newAddr(t), id: [4]byte{4}}
 
-		n1 := &Node{addr: "a", id: [4]byte{4}}
+		n1Mock := &RemoteNodeMock{
+			Addr: n1.addr,
+			ID:   n1.id,
+		}
 
 		n2 := &RemoteNodeMock{
-			Addr:                   "b",
+			Addr:                   newAddr(t),
 			ID:                     [4]byte{1},
-			getSuccessorResponse:   n1.toRemoteNode(),
-			getPredecessorResponse: n1.toRemoteNode(),
+			getSuccessorResponse:   n1Mock,
+			getPredecessorResponse: n1Mock,
 		}
 
 		n1.predecessor = n2
@@ -260,5 +271,9 @@ func TestFindPredecessor(t *testing.T) {
 		if !keyspace.Equal(p.GetID(), n1.GetID()) {
 			t.Errorf("expected predecessor to be %x, got %x", n1.GetID(), p.GetID())
 		}
+	})
+
+	t.Run("2 nodes - infinite loop", func(t *testing.T) {
+		t.Skip("TODO: infinite loop is caused by key=869dff00 n1=f81d1c11 p=00869dfe ")
 	})
 }

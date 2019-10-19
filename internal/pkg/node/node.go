@@ -147,6 +147,7 @@ func (node *Node) transferKey(key scale.Key, remote scale.RemoteNode) {
 
 	if err != nil {
 		node.sugar.Error(err)
+		return
 	}
 
 	node.store.Del(key)
@@ -286,7 +287,7 @@ func (node *Node) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 	p := node.successor
 
 	if err != nil {
-		node.sugar.Fatal(err)
+		return nil, err
 	}
 
 	for !keyspace.BetweenRightInclusive(key, n1.GetID(), p.GetID()) {
@@ -297,7 +298,7 @@ func (node *Node) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 		}
 
 		if err != nil {
-			node.sugar.Fatal(err)
+			return nil, err
 		}
 
 		if keyspace.Equal(n1.GetID(), node.GetID()) {
@@ -307,7 +308,7 @@ func (node *Node) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 		}
 
 		if err != nil {
-			node.sugar.Fatal(err)
+			return nil, err
 		}
 	}
 
