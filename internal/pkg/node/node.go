@@ -200,12 +200,12 @@ func (node *Node) bootstrap(n scale.RemoteNode) {
 	var err error
 
 	for i := 0; i < scale.M; i++ {
-		start := keyspace.ByteArrayToKey(fingerMath(node.id[:], i, scale.M))
+		start := fingerMath(node.id[:], i)
 
 		if keyspace.Equal(n.GetID(), node.id) {
-			p, err = node.FindSuccessor(start)
+			p, err = node.FindSuccessor(keyspace.ByteArrayToKey(start))
 		} else {
-			p, err = n.FindSuccessor(start)
+			p, err = n.FindSuccessor(keyspace.ByteArrayToKey(start))
 		}
 
 		if err != nil {
@@ -279,33 +279,29 @@ func (node *Node) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 	var n1 scale.RemoteNode
 	var err error
 
-	if keyspace.Equal(node.id, node.predecessor.GetID()) {
-		return node.toRemoteNode(), nil
+	n1 = node.toRemoteNode()
+	successor := node.successor
+
+	if !keyspace.BetweenRightInclusive(key, node.predecessor.GetID(), node.successor.GetID()) {
+		n1, _ = node.ClosestPrecedingFinger(key)
+	} else {
+		return n1, nil
 	}
 
-	n1 = node.toRemoteNode()
-	p := node.successor
+	// ok let's get the successor of n1
 
+	successor, err = n1.GetSuccessor()
 	if err != nil {
 		return nil, err
 	}
 
-	for !keyspace.BetweenRightInclusive(key, n1.GetID(), p.GetID()) {
-		if keyspace.Equal(n1.GetID(), node.id) {
-			n1, err = node.ClosestPrecedingFinger(key)
-		} else {
-			n1, err = n1.ClosestPrecedingFinger(key)
-		}
-
+	for !keyspace.BetweenRightInclusive(key, n1.GetID(), successor.GetID()) && !keyspace.Equal(n1.GetID(), node.id) {
+		n1, err = n1.ClosestPrecedingFinger(key)
 		if err != nil {
 			return nil, err
 		}
 
-		if keyspace.Equal(n1.GetID(), node.GetID()) {
-			p, err = node.GetSuccessor()
-		} else {
-			p, err = n1.GetSuccessor()
-		}
+		successor, err = n1.GetSuccessor()
 
 		if err != nil {
 			return nil, err
@@ -340,13 +336,14 @@ func (node *Node) ClosestPrecedingFinger(id scale.Key) (scale.RemoteNode, error)
 	defer node.mutex.RUnlock()
 
 	for i := scale.M - 1; i >= 0; i-- {
+		node.sugar.Info(fingerMath(node.id[:], i))
 		finger := node.fingerTable[i]
 
 		if keyspace.Between(finger.GetID(), node.id, id) {
 			return finger, nil
 		}
 	}
-
+	node.sugar.Info("it me")
 	return node.toRemoteNode(), nil
 }
 
@@ -479,7 +476,7 @@ func (node *Node) fixNextFinger(next int) int {
 	node.mutex.Lock()
 	defer node.mutex.Unlock()
 
-	nextHash := fingerMath(node.id[:], next, scale.M)
+	nextHash := fingerMath(node.id[:], next)
 	successor, _ := node.FindSuccessor(keyspace.ByteArrayToKey(nextHash))
 	successorRemote := successor.(*RemoteNode)
 	finger := newRemoteNode(successorRemote.Addr)

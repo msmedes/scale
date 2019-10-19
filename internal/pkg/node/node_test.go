@@ -269,11 +269,11 @@ func TestFindPredecessor(t *testing.T) {
 		}
 
 		if !keyspace.Equal(p.GetID(), n1.GetID()) {
-			t.Errorf("expected predecessor to be %x, got %x", n1.GetID(), p.GetID())
+			t.Errorf("expected predecessor to be % x, got % x", n1.GetID(), p.GetID())
 		}
 	})
 
 	t.Run("2 nodes - infinite loop", func(t *testing.T) {
-		t.Skip("TODO: infinite loop is caused by key=869dff00 n1=f81d1c11 p=00869dfe ")
+		t.Skip("TODO: infinite loop is caused by key=869dff00 n1=f81d1c11 p=00869dfe")
 	})
 }
