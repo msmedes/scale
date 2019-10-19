@@ -217,7 +217,7 @@ func (node *Node) bootstrap(n scale.RemoteNode) {
 		s := p
 		pID := p.GetID()
 
-		for bytes.Compare(pID[:], start[:]) >= 0 {
+		for bytes.Compare(pID[:], start[:]) > 0 {
 			pred := p
 			s = pred
 			p, err = pred.GetSuccessor()
@@ -283,7 +283,10 @@ func (node *Node) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 	successor := node.successor
 
 	if !keyspace.BetweenRightInclusive(key, node.predecessor.GetID(), node.successor.GetID()) {
-		n1, _ = node.ClosestPrecedingFinger(key)
+		n1, err = node.ClosestPrecedingFinger(key)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		return n1, nil
 	}
@@ -336,14 +339,12 @@ func (node *Node) ClosestPrecedingFinger(id scale.Key) (scale.RemoteNode, error)
 	defer node.mutex.RUnlock()
 
 	for i := scale.M - 1; i >= 0; i-- {
-		node.sugar.Info(fingerMath(node.id[:], i))
 		finger := node.fingerTable[i]
 
 		if keyspace.Between(finger.GetID(), node.id, id) {
 			return finger, nil
 		}
 	}
-	node.sugar.Info("it me")
 	return node.toRemoteNode(), nil
 }
 

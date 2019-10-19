@@ -204,9 +204,10 @@ func TestFindPredecessor(t *testing.T) {
 		nRemote := n.toRemoteNode()
 		n.fingerTable = newFingerTable(nRemote)
 		pred, err := n.FindPredecessor(key)
+		t.Logf("%v", pred)
 
 		if err != nil {
-			t.Error(err)
+			t.Errorf("error time: %v", err)
 		}
 
 		if !keyspace.Equal(pred.GetID(), n.id) {
