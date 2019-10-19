@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"sync"
 
 	"github.com/msmedes/scale/internal/pkg/keyspace"
 	"github.com/msmedes/scale/internal/pkg/rpc"
@@ -9,6 +10,27 @@ import (
 	"github.com/msmedes/scale/internal/pkg/scale"
 	"google.golang.org/grpc"
 )
+
+type remotesCache struct {
+	mutex sync.RWMutex
+	data  map[string]scale.RemoteNode
+}
+
+func (r *remotesCache) get(addr string) scale.RemoteNode {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+	return r.data[addr]
+}
+
+func (r *remotesCache) set(addr string, node scale.RemoteNode) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	r.data[addr] = node
+}
+
+var remotes *remotesCache = &remotesCache{
+	data: make(map[string]scale.RemoteNode),
+}
 
 // RemoteNode contains metadata about another node
 type RemoteNode struct {
@@ -41,7 +63,7 @@ func (r *RemoteNode) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 		return nil, err
 	}
 
-	return NewRemoteNode(predecessor.GetAddr()), nil
+	return newRemoteNode(predecessor.GetAddr()), nil
 }
 
 // FindSuccessor proxy
@@ -52,21 +74,36 @@ func (r *RemoteNode) FindSuccessor(key scale.Key) (scale.RemoteNode, error) {
 		return nil, err
 	}
 
-	return NewRemoteNode(p.GetAddr()), nil
+	return newRemoteNode(p.GetAddr()), nil
 }
 
 // NewRemoteNode creates a new RemoteNode with an RPC client.
 // This will reuse RPC connections if given the same address
-func NewRemoteNode(addr string) *RemoteNode {
+func newRemoteNode(addr string) scale.RemoteNode {
 	id := keyspace.GenerateKey(addr)
+	return newRemoteNodeWithID(addr, id)
+}
+
+func newRemoteNodeWithID(addr string, id scale.Key) scale.RemoteNode {
+	var remote scale.RemoteNode
+	remote = remotes.get(addr)
+
+	if remote != nil {
+		return remote
+	}
+
 	client, conn := rpc.NewClient(addr)
 
-	return &RemoteNode{
+	remote = &RemoteNode{
 		ID:               id,
 		Addr:             addr,
 		RPC:              client,
 		clientConnection: conn,
 	}
+
+	remotes.set(addr, remote)
+
+	return remote
 }
 
 // Notify proxy
@@ -88,7 +125,7 @@ func (r *RemoteNode) GetSuccessor() (scale.RemoteNode, error) {
 		return nil, err
 	}
 
-	return NewRemoteNode(successor.GetAddr()), nil
+	return newRemoteNode(successor.GetAddr()), nil
 }
 
 //GetPredecessor proxy
@@ -99,7 +136,7 @@ func (r *RemoteNode) GetPredecessor() (scale.RemoteNode, error) {
 		return nil, err
 	}
 
-	return NewRemoteNode(predecessor.GetAddr()), nil
+	return newRemoteNode(predecessor.GetAddr()), nil
 }
 
 //Ping proxy
@@ -107,4 +144,39 @@ func (r *RemoteNode) Ping() error {
 	_, err := r.RPC.Ping(context.Background(), &pb.Empty{})
 
 	return err
+}
+
+//GetLocal proxy
+func (r *RemoteNode) GetLocal(key scale.Key) ([]byte, error) {
+	val, err := r.RPC.GetLocal(
+		context.Background(),
+		&pb.GetRequest{Key: key[:]},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return val.GetValue(), nil
+}
+
+//SetLocal proxy
+func (r *RemoteNode) SetLocal(key scale.Key, val []byte) error {
+	_, err := r.RPC.SetLocal(
+		context.Background(),
+		&pb.SetRequest{Key: key[:], Value: val},
+	)
+
+	return err
+}
+
+//ClosestPrecedingFinger proxy
+func (r *RemoteNode) ClosestPrecedingFinger(id scale.Key) (scale.RemoteNode, error) {
+	res, err := r.RPC.ClosestPrecedingFinger(context.Background(), &pb.RemoteQuery{Id: id[:]})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return newRemoteNode(res.GetAddr()), nil
 }

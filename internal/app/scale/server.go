@@ -26,13 +26,14 @@ func ServerListen() {
 	graphql := graphql.NewGraphQL(webAddr, rpcServer)
 
 	defer n.Shutdown()
+	defer graphql.Shutdown()
+	defer rpcServer.Shutdown()
 
 	go graphql.ServerListen()
 	go rpcServer.ServerListen()
 
 	if len(join) > 0 {
-		remote := node.NewRemoteNode(join)
-		n.Join(remote)
+		n.JoinAddr(join)
 	}
 
 	go n.StabilizationStart()

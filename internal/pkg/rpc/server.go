@@ -265,3 +265,9 @@ func (r *RPC) ServerListen() {
 
 	grpcServer.Serve(server)
 }
+
+//Shutdown clean exit
+func (r *RPC) Shutdown() {
+	r.logger.Sync()
+	r.sugar.Sync()
+}

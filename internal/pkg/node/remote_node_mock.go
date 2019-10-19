@@ -8,9 +8,13 @@ import (
 type RemoteNodeMock struct {
 	scale.RemoteNode
 
-	ID                      scale.Key
-	Addr                    string
-	findPredecessorResponse scale.RemoteNode
+	ID                             scale.Key
+	Addr                           string
+	findPredecessorResponse        scale.RemoteNode
+	findSuccessorResponse          scale.RemoteNode
+	getSuccessorResponse           scale.RemoteNode
+	getPredecessorResponse         scale.RemoteNode
+	closestPrecedingFingerResponse scale.RemoteNode
 }
 
 // GetID getter for ID
@@ -24,11 +28,31 @@ func (m *RemoteNodeMock) GetAddr() string {
 }
 
 //FindPredecessor finds the predecessor to the id
-func (m *RemoteNodeMock) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
+func (m *RemoteNodeMock) FindPredecessor(scale.Key) (scale.RemoteNode, error) {
 	return m.findPredecessorResponse, nil
 }
 
+//FindSuccessor finds the predecessor to the id
+func (m *RemoteNodeMock) FindSuccessor(scale.Key) (scale.RemoteNode, error) {
+	return m.findSuccessorResponse, nil
+}
+
+//GetPredecessor finds the predecessor to the id
+func (m *RemoteNodeMock) GetPredecessor() (scale.RemoteNode, error) {
+	return m.getPredecessorResponse, nil
+}
+
+//GetSuccessor finds the predecessor to the id
+func (m *RemoteNodeMock) GetSuccessor() (scale.RemoteNode, error) {
+	return m.getSuccessorResponse, nil
+}
+
 //Notify notify
-func (m *RemoteNodeMock) Notify(node scale.Node) error {
+func (m *RemoteNodeMock) Notify(scale.Node) error {
 	return nil
+}
+
+//ClosestPrecedingFinger finds the predecessor to the id
+func (m *RemoteNodeMock) ClosestPrecedingFinger(scale.Key) (scale.RemoteNode, error) {
+	return m.closestPrecedingFingerResponse, nil
 }

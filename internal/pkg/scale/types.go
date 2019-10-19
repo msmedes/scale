@@ -8,34 +8,35 @@ const M = 32
 // Key 20 byte key
 type Key = [M / 8]byte
 
-// RemoteNode contains metadata (ID and Address) about another node in the network
-type RemoteNode interface {
+type baseNode interface {
 	GetAddr() string
 	GetID() Key
 	FindPredecessor(Key) (RemoteNode, error)
 	FindSuccessor(Key) (RemoteNode, error)
 	GetSuccessor() (RemoteNode, error)
 	GetPredecessor() (RemoteNode, error)
+	GetLocal(Key) ([]byte, error)
+	SetLocal(Key, []byte) error
+	ClosestPrecedingFinger(Key) (RemoteNode, error)
+}
+
+// RemoteNode contains metadata (ID and Address) about another node in the network
+type RemoteNode interface {
+	baseNode
+
 	Ping() error
 	Notify(Node) error
 }
 
 // Node represents the current node and operations it is responsible for
 type Node interface {
-	ClosestPrecedingFinger(Key) (RemoteNode, error)
-	FindPredecessor(Key) (RemoteNode, error)
-	FindSuccessor(Key) (RemoteNode, error)
+	baseNode
+
 	Get(Key) ([]byte, error)
-	GetAddr() string
 	GetFingerTableIDs() []Key
-	GetID() Key
-	GetLocal(Key) ([]byte, error)
 	GetPort() string
-	GetPredecessor() (RemoteNode, error)
-	GetSuccessor() (RemoteNode, error)
 	Notify(Key, string) error
 	Set(Key, []byte) error
-	SetLocal(Key, []byte) error
 	TransferKeys(Key, string)
 }
 
