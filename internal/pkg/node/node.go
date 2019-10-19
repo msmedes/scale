@@ -26,8 +26,8 @@ type Node struct {
 	id                scale.Key
 	addr              string
 	port              string
-	predecessor       *RemoteNode
-	successor         *RemoteNode
+	predecessor       scale.RemoteNode
+	successor         scale.RemoteNode
 	fingerTable       Table
 	store             *store.MemoryStore
 	logger            *zap.Logger
@@ -168,12 +168,12 @@ func (node *Node) Join(remote scale.RemoteNode) {
 		node.sugar.Fatal("no predecessor found")
 	}
 
-	s := NewRemoteNode(predecessor.GetAddr())
+	s := predecessor
 	p := s
 
-	for !keyspace.BetweenRightInclusive(node.id, p.ID, s.ID) && !keyspace.Equal(p.ID, s.ID) {
+	for !keyspace.BetweenRightInclusive(node.id, p.GetID(), s.GetID()) && !keyspace.Equal(p.GetID(), s.GetID()) {
 		p = s
-		successor, err := p.RPC.GetSuccessor(context.Background(), &pb.Empty{})
+		successor, err := p.GetSuccessor()
 
 		if err != nil {
 			node.sugar.Fatal(err)
@@ -185,24 +185,26 @@ func (node *Node) Join(remote scale.RemoteNode) {
 	node.successor = s
 	node.predecessor = p
 
-	p.RPC.Notify(context.Background(), &pb.RemoteNode{Id: node.id[:], Addr: node.addr, Present: true})
-	s.RPC.Notify(context.Background(), &pb.RemoteNode{Id: node.id[:], Addr: node.addr, Present: true})
+	p.Notify(node)
+	s.Notify(node)
 
 	node.bootstrap(s)
 
 	node.sugar.Info("joined network")
 }
 
-func (node *Node) bootstrap(n *RemoteNode) {
+func (node *Node) bootstrap(n scale.RemoteNode) {
 	for i := 0; i < scale.M; i++ {
 		start := FingerMath(node.id[:], i, scale.M)
-		p, _ := n.RPC.FindSuccessor(context.Background(), &pb.RemoteQuery{Id: start})
+		p, _ := n.FindSuccessor(keyspace.ByteArrayToKey(start))
 		var s *RemoteNode
+		pID := p.GetID()
 
-		for bytes.Compare(p.GetId(), start) >= 0 {
+		for bytes.Compare(pID[:], start) >= 0 {
 			pred := NewRemoteNode(p.GetAddr())
 			s = pred
-			p, _ = pred.RPC.GetSuccessor(context.Background(), &pb.Empty{})
+			p, _ = pred.GetSuccessor()
+			pID = p.GetID()
 		}
 
 		node.fingerTable[i] = s
@@ -261,7 +263,7 @@ func (node *Node) FindPredecessor(id scale.Key) (scale.RemoteNode, error) {
 	var closestPrecedingRPC *pb.RemoteNode
 	var err error
 
-	if keyspace.Equal(node.id, node.predecessor.ID) {
+	if keyspace.Equal(node.id, node.predecessor.GetID()) {
 		return NewRemoteNode(node.addr), nil
 	}
 
@@ -356,7 +358,7 @@ func (node *Node) Shutdown() {
 
 	node.logger.Sync()
 
-	if !keyspace.Equal(node.id, node.successor.ID) {
+	if !keyspace.Equal(node.id, node.successor.GetID()) {
 	}
 
 	for _, remoteConnection := range node.remoteConnections {
@@ -365,31 +367,31 @@ func (node *Node) Shutdown() {
 }
 
 func (node *Node) stabilize() {
-	if keyspace.Equal(node.successor.ID, node.id) {
+	if keyspace.Equal(node.successor.GetID(), node.id) {
 		return
 	}
 
-	x, err := node.predecessor.RPC.GetSuccessor(context.Background(), &pb.Empty{})
+	x, err := node.predecessor.GetSuccessor()
 
 	if err != nil {
 		node.sugar.Fatal(err)
 	}
 
-	if x.Present && keyspace.Between(keyspace.ByteArrayToKey(x.Id), node.predecessor.ID, node.id) {
+	if x != nil && keyspace.Between(x.GetID(), node.predecessor.GetID(), node.id) {
 		node.mutex.Lock()
-		node.predecessor = NewRemoteNode(x.Addr)
+		node.predecessor = NewRemoteNode(x.GetAddr())
 		node.mutex.Unlock()
 	}
 
-	x, err = node.successor.RPC.GetPredecessor(context.Background(), &pb.Empty{})
+	x, err = node.successor.GetPredecessor()
 
 	if err != nil {
 		node.sugar.Error(err)
 	}
 
-	if x.Present && keyspace.Between(keyspace.ByteArrayToKey(x.Id), node.id, node.successor.ID) {
+	if x != nil && keyspace.Between(x.GetID(), node.id, node.successor.GetID()) {
 		node.mutex.Lock()
-		node.fingerTable[0] = NewRemoteNode(x.Addr)
+		node.fingerTable[0] = NewRemoteNode(x.GetAddr())
 		node.mutex.Unlock()
 	}
 }
@@ -404,7 +406,7 @@ func (node *Node) checkPredecessor() {
 		return
 	}
 
-	_, err := predecessor.RPC.Ping(context.Background(), &pb.Empty{})
+	err := predecessor.Ping()
 
 	if err != nil {
 		node.predecessor = nil
@@ -416,7 +418,7 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 	node.mutex.Lock()
 	defer node.mutex.Unlock()
 
-	if keyspace.Equal(node.id, node.successor.ID) && keyspace.Equal(node.id, node.predecessor.ID) {
+	if keyspace.Equal(node.id, node.successor.GetID()) && keyspace.Equal(node.id, node.predecessor.GetID()) {
 		remote := NewRemoteNode(addr)
 		node.fingerTable[0] = remote
 		node.successor = remote
@@ -426,14 +428,14 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 		return nil
 	}
 
-	if keyspace.Between(id, node.id, node.successor.ID) {
+	if keyspace.Between(id, node.id, node.successor.GetID()) {
 		successor := NewRemoteNode(addr)
 		node.fingerTable[0] = successor
 		node.successor = successor
 		node.bootstrap(successor)
 	}
 
-	if keyspace.Between(id, node.predecessor.ID, node.id) {
+	if keyspace.Between(id, node.predecessor.GetID(), node.id) {
 		predecessor := NewRemoteNode(addr)
 		node.predecessor = predecessor
 		node.bootstrap(predecessor)

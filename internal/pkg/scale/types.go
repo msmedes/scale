@@ -13,6 +13,11 @@ type RemoteNode interface {
 	GetAddr() string
 	GetID() Key
 	FindPredecessor(Key) (RemoteNode, error)
+	FindSuccessor(Key) (RemoteNode, error)
+	GetSuccessor() (RemoteNode, error)
+	GetPredecessor() (RemoteNode, error)
+	Ping() error
+	Notify(Node) error
 }
 
 // Node represents the current node and operations it is responsible for

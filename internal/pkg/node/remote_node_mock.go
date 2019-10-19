@@ -1,6 +1,8 @@
 package node
 
-import "github.com/msmedes/scale/internal/pkg/scale"
+import (
+	"github.com/msmedes/scale/internal/pkg/scale"
+)
 
 // RemoteNodeMock mock remote node
 type RemoteNodeMock struct {
@@ -24,4 +26,9 @@ func (m *RemoteNodeMock) GetAddr() string {
 //FindPredecessor finds the predecessor to the id
 func (m *RemoteNodeMock) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 	return m.findPredecessorResponse, nil
+}
+
+//Notify notify
+func (m *RemoteNodeMock) Notify(node scale.Node) error {
+	return nil
 }
