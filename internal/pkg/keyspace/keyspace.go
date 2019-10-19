@@ -39,16 +39,23 @@ func KeyToString(key scale.Key) string {
 
 // Between returns whether x is between a and b
 func Between(x, a, b scale.Key) bool {
-	X := x[:]
-	A := a[:]
-	B := b[:]
 	// if A > B:
-	if bytes.Compare(A, B) > 0 {
+	if GT(a, b) {
 		// X is between A and B if X > A or X < B
-		return bytes.Compare(X, A) > 0 || bytes.Compare(X, B) < 0
+		return GT(x, a) || LT(x, b)
 	}
 
-	return bytes.Compare(A, X) < 0 && bytes.Compare(X, B) < 0
+	return GT(x, a) && LT(x, b)
+}
+
+// GT greater than
+func GT(x, a scale.Key) bool {
+	return bytes.Compare(x[:], a[:]) > 0
+}
+
+// LT less than
+func LT(x, a scale.Key) bool {
+	return bytes.Compare(x[:], a[:]) < 0
 }
 
 // BetweenRightInclusive returns whether n is between lower and upper, upper

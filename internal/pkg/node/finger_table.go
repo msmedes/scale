@@ -9,25 +9,23 @@ import (
 )
 
 // Table contains nodes in network for lookups
-type Table []*RemoteNode
+type table []scale.RemoteNode
 
 // Great news, there are now two ways we need to initialize
 // a finger table, this is for when there is only one node
 // in the chord
-
-// NewScaleFingerTable create and populate a finger table
-func NewScaleFingerTable(node *Node) Table {
-	ft := make([]*RemoteNode, scale.M)
+func newFingerTable(node scale.RemoteNode) table {
+	ft := make([]scale.RemoteNode, scale.M)
 
 	for i := range ft {
-		ft[i] = NewRemoteNode(node.addr)
+		ft[i] = node
 	}
 
 	return ft
 }
 
 // FingerMath fingermath
-func FingerMath(n []byte, i int, m int) []byte {
+func fingerMath(n []byte, i int, m int) []byte {
 	twoExp := big.NewInt(2)
 	twoExp.Exp(twoExp, big.NewInt(int64(i)), nil)
 	mExp := big.NewInt(2)
@@ -41,14 +39,15 @@ func FingerMath(n []byte, i int, m int) []byte {
 	return res.Bytes()
 }
 
-func (ft Table) String() string {
+func (ft table) String() string {
 	var buf bytes.Buffer
 
 	buf.WriteString("\n")
 
 	for _, val := range ft {
-		str := fmt.Sprintf("%+v", val)
+		str := fmt.Sprintf("%x", val.GetID())
 		buf.WriteString(str)
+		buf.WriteString("\n")
 	}
 
 	return buf.String()

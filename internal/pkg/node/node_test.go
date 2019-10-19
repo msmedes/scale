@@ -66,7 +66,7 @@ func TestCheckPredecessor(t *testing.T) {
 	})
 
 	t.Run("removes predecessor if there is an error pinging it", func(t *testing.T) {
-		n.predecessor = NewRemoteNode(Addr2)
+		n.predecessor = newRemoteNode(Addr2)
 		n.checkPredecessor()
 		p, err := n.GetPredecessor()
 
@@ -89,19 +89,176 @@ func TestJoin(t *testing.T) {
 			ID:   keyspace.GenerateKey(Addr1),
 		}
 
-		n1.findPredecessorResponse = &RemoteNodeMock{
-			Addr: n1.GetAddr(),
-			ID:   keyspace.GenerateKey(n1.GetAddr()),
+		n1.findSuccessorResponse = n1
+		n1.findPredecessorResponse = n1
+		n1.getSuccessorResponse = n1
+		n1.getPredecessorResponse = n1
+
+		n2.join(n1)
+
+		t.Run("sets predecessor to other node", func(t *testing.T) {
+			if n2.predecessor.GetID() != n1.GetID() {
+				t.Errorf("expected n2.predecessor to be n1. got: %x", n2.predecessor.GetID())
+			}
+		})
+
+		t.Run("sets successor to other node", func(t *testing.T) {
+			if n2.successor.GetID() != n1.GetID() {
+				t.Errorf("expected n2.successor to be n1. got: %x", n2.successor.GetID())
+			}
+		})
+
+		t.Run("sets finger table to other node", func(t *testing.T) {
+			ids := n2.GetFingerTableIDs()
+
+			for i, id := range ids {
+				if !keyspace.Equal(id, n1.GetID()) {
+					t.Errorf("invalid finger table entry at index %d: %x", i, id)
+				}
+			}
+		})
+	})
+}
+
+func TestClosestPrecedingFinger(t *testing.T) {
+	n := &Node{addr: "a", id: [4]byte{1}}
+	nRemote := n.toRemoteNode()
+	n.fingerTable = newFingerTable(nRemote)
+
+	t.Run("ft is all one value < key", func(t *testing.T) {
+		key := [4]byte{2}
+		closest, err := n.ClosestPrecedingFinger(key)
+
+		if err != nil {
+			t.Error(err)
 		}
 
-		n2.Join(n1)
+		if !keyspace.Equal(closest.GetID(), n.GetID()) {
+			t.Errorf("expected %x got %x", n.GetID(), closest.GetID())
+		}
+	})
 
-		if n2.predecessor.GetID() != n1.GetID() {
-			t.Fatalf("expected n2.predecessor to be n1. got: %x", n2.predecessor.GetID())
+	t.Run("ft is all one value > key", func(t *testing.T) {
+		key := [4]byte{0}
+		closest, err := n.ClosestPrecedingFinger(key)
+
+		if err != nil {
+			t.Error(err)
 		}
 
-		if n2.successor.GetID() != n1.GetID() {
-			t.Fatalf("expected n2.successor to be n1. got: %x", n2.successor.GetID())
+		if !keyspace.Equal(closest.GetID(), n.GetID()) {
+			t.Errorf("expected %x got %x", n.GetID(), closest.GetID())
+		}
+	})
+
+	t.Run("ft is all one value == key", func(t *testing.T) {
+		key := [4]byte{1}
+		closest, err := n.ClosestPrecedingFinger(key)
+
+		if err != nil {
+			t.Error(err)
+		}
+
+		if !keyspace.Equal(closest.GetID(), n.GetID()) {
+			t.Errorf("expected %x got %x", n.GetID(), closest.GetID())
+		}
+	})
+
+	t.Run("other vals in ft", func(t *testing.T) {
+		n.fingerTable[0] = newRemoteNodeWithID("b", [4]byte{2})
+		n.fingerTable[1] = newRemoteNodeWithID("c", [4]byte{4})
+		n.fingerTable[2] = newRemoteNodeWithID("d", [4]byte{8})
+
+		key := [4]byte{5}
+
+		closest, err := n.ClosestPrecedingFinger(key)
+
+		if err != nil {
+			t.Error(err)
+		}
+
+		if !keyspace.Equal(closest.GetID(), [4]byte{4}) {
+			t.Errorf("expected %x got %x", [4]byte{4}, closest.GetID())
+		}
+	})
+}
+
+func TestFindPredecessor(t *testing.T) {
+	t.Run("simple case - node only aware of itself", func(t *testing.T) {
+		n := &Node{addr: "a", id: [4]byte{1}}
+		n.predecessor = n.toRemoteNode()
+		n.successor = n.toRemoteNode()
+		key := [4]byte{0}
+		nRemote := n.toRemoteNode()
+		n.fingerTable = newFingerTable(nRemote)
+		pred, err := n.FindPredecessor(key)
+
+		if err != nil {
+			t.Error(err)
+		}
+
+		if !keyspace.Equal(pred.GetID(), n.id) {
+			t.Errorf("expected predecessor to be %x, got %x", n.id, pred.GetID())
+		}
+	})
+
+	t.Run("2 nodes - hi key", func(t *testing.T) {
+		n1 := &Node{addr: "a", id: [4]byte{1}}
+
+		n2 := &RemoteNodeMock{
+			Addr:                   "b",
+			ID:                     [4]byte{2},
+			getSuccessorResponse:   n1.toRemoteNode(),
+			getPredecessorResponse: n1.toRemoteNode(),
+		}
+
+		n1.predecessor = n2
+		n1.successor = n2
+		n1.fingerTable = newFingerTable(n2)
+
+		key := [4]byte{3}
+
+		p, err := n1.FindPredecessor(key)
+
+		if err != nil {
+			t.Error(err)
+		}
+
+		if !keyspace.Equal(p.GetID(), n2.GetID()) {
+			t.Errorf("expected predecessor to be %x, got %x", n2.GetID(), p.GetID())
+		}
+	})
+
+	t.Run("2 nodes - lo key", func(t *testing.T) {
+		t.Skip(`
+      this is where the pain is
+      also hard to test because need to mock out rpc
+      call thats happening because of node.go#285
+    `)
+
+		n1 := &Node{addr: "a", id: [4]byte{4}}
+
+		n2 := &RemoteNodeMock{
+			Addr:                   "b",
+			ID:                     [4]byte{1},
+			getSuccessorResponse:   n1.toRemoteNode(),
+			getPredecessorResponse: n1.toRemoteNode(),
+		}
+
+		n1.predecessor = n2
+		n1.successor = n2
+		n1.fingerTable = newFingerTable(n2)
+
+		key := [4]byte{0}
+
+		p, err := n1.FindPredecessor(key)
+
+		if err != nil {
+			t.Error(err)
+		}
+
+		if !keyspace.Equal(p.GetID(), n1.GetID()) {
+			t.Errorf("expected predecessor to be %x, got %x", n1.GetID(), p.GetID())
 		}
 	})
 }

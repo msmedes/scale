@@ -22,6 +22,7 @@ type GraphQL struct {
 	addr   string
 	schema gql.Schema
 	sugar  *zap.SugaredLogger
+	logger *zap.Logger
 	rpc    *rpc.RPC
 }
 
@@ -39,6 +40,7 @@ func NewGraphQL(addr string, r *rpc.RPC) *GraphQL {
 
 	sugar := logger.Sugar()
 	obj.sugar = sugar
+	obj.logger = logger
 
 	return obj
 }
@@ -60,7 +62,6 @@ func (g *GraphQL) ServerListen() {
 	})
 
 	g.sugar.Infof("listening: %s", g.addr)
-	defer g.sugar.Sync()
 
 	err := http.ListenAndServe(g.addr, nil)
 
@@ -222,4 +223,10 @@ func (g *GraphQL) buildSchema() {
 	)
 
 	g.schema = schema
+}
+
+//Shutdown clean exit
+func (g *GraphQL) Shutdown() {
+	g.logger.Sync()
+	g.sugar.Sync()
 }
