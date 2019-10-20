@@ -196,7 +196,7 @@ func TestClosestPrecedingFinger(t *testing.T) {
 }
 
 func TestFindPredecessor(t *testing.T) {
-	t.Skip("not right now")
+	// t.Skip("not right now")
 	t.Run("simple case - node only aware of itself", func(t *testing.T) {
 		n := &Node{addr: newAddr(t), id: [4]byte{1}}
 		n.predecessor = n.toRemoteNode()
@@ -205,10 +205,12 @@ func TestFindPredecessor(t *testing.T) {
 		nRemote := n.toRemoteNode()
 		n.fingerTable = newFingerTable(nRemote)
 		pred, err := n.FindPredecessor(key)
-		t.Logf("%v", pred)
 
 		if err != nil {
 			t.Errorf("error time: %v", err)
+		}
+		if pred != nil {
+			t.Errorf("nil pred: %v", pred)
 		}
 
 		if !keyspace.Equal(pred.GetID(), n.id) {

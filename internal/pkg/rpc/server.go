@@ -4,6 +4,9 @@ import (
 	"context"
 	"log"
 	"net"
+	"time"
+
+	"google.golang.org/grpc/keepalive"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
@@ -247,17 +250,23 @@ func (r *RPC) GetLocal(ctx context.Context, in *pb.GetRequest) (*pb.GetResponse,
 
 // ServerListen start up the server
 func (r *RPC) ServerListen() {
+	opts := []grpc.ServerOption{
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             5 * time.Second,
+			PermitWithoutStream: true,
+		}),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			grpc_zap.UnaryServerInterceptor(r.logger),
+		)),
+	}
+
 	server, err := net.Listen("tcp", r.node.GetAddr())
 
 	if err != nil {
 		r.sugar.Fatalf("failed to listen: %v", err)
 	}
 
-	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
-			grpc_zap.UnaryServerInterceptor(r.logger),
-		)),
-	)
+	grpcServer := grpc.NewServer(opts...)
 
 	pb.RegisterScaleServer(grpcServer, r)
 

@@ -15,7 +15,7 @@ import (
 )
 
 // StabilizeInterval how often to execute stabilization in seconds
-const StabilizeInterval = 1
+const StabilizeInterval = 5
 
 // Node main node class
 type Node struct {
@@ -106,8 +106,8 @@ func (node *Node) StabilizationStart() {
 	for {
 		select {
 		case <-ticker.C:
-			// node.stabilize()
-			// node.checkPredecessor()
+			node.stabilize()
+			node.checkPredecessor()
 
 			if next == scale.M {
 				next = 0
@@ -203,8 +203,10 @@ func (node *Node) bootstrap(n scale.RemoteNode) {
 		start := fingerMath(node.id[:], i)
 
 		if keyspace.Equal(n.GetID(), node.id) {
+			node.sugar.Info("node bootstrap")
 			p, err = node.FindSuccessor(keyspace.ByteArrayToKey(start))
 		} else {
+			node.sugar.Info("n bootstrap")
 			p, err = n.FindSuccessor(keyspace.ByteArrayToKey(start))
 		}
 
@@ -311,7 +313,7 @@ func (node *Node) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 		}
 	}
 
-	return n1, nil
+	return newRemoteNode(n1.GetAddr()), nil
 }
 
 // FindSuccessor returns the successor for this node
@@ -392,7 +394,7 @@ func (node *Node) Shutdown() {
 
 func (node *Node) stabilize() {
 	if keyspace.Equal(node.successor.GetID(), node.id) {
-		return
+		node.sugar.Info("stabilize: node and successor are same")
 	}
 
 	x, err := node.predecessor.GetSuccessor()
@@ -404,6 +406,7 @@ func (node *Node) stabilize() {
 	if x != nil && keyspace.Between(x.GetID(), node.predecessor.GetID(), node.id) {
 		node.mutex.Lock()
 		node.predecessor = newRemoteNode(x.GetAddr())
+		node.sugar.Infof("predecessor set to %+v", node.predecessor)
 		node.mutex.Unlock()
 	}
 
@@ -447,6 +450,7 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 		node.fingerTable[0] = remote
 		node.successor = remote
 		node.predecessor = remote
+		node.sugar.Infof("predecessor and successor setto %+v", remote)
 		node.bootstrap(remote)
 
 		return nil
@@ -456,12 +460,14 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 		successor := newRemoteNode(addr)
 		node.fingerTable[0] = successor
 		node.successor = successor
+		node.sugar.Infof("successor set to %+v", node.successor)
 		node.bootstrap(successor)
 	}
 
 	if keyspace.Between(id, node.predecessor.GetID(), node.id) {
 		predecessor := newRemoteNode(addr)
 		node.predecessor = predecessor
+		node.sugar.Infof("predecessor set to %+v", node.predecessor)
 		node.bootstrap(predecessor)
 	}
 

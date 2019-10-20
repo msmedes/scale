@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"go.uber.org/zap"
+
 	"github.com/msmedes/scale/internal/pkg/keyspace"
 	"github.com/msmedes/scale/internal/pkg/rpc"
 	pb "github.com/msmedes/scale/internal/pkg/rpc/proto"
@@ -14,6 +16,7 @@ import (
 type remotesCache struct {
 	mutex sync.RWMutex
 	data  map[string]scale.RemoteNode
+	sugar *zap.SugaredLogger
 }
 
 func (r *remotesCache) get(addr string) scale.RemoteNode {
@@ -28,8 +31,19 @@ func (r *remotesCache) set(addr string, node scale.RemoteNode) {
 	r.data[addr] = node
 }
 
+func newLogger() *zap.SugaredLogger {
+	logger, _ := zap.NewDevelopment(
+		zap.Fields(
+			zap.String("remotes", "idk bro"),
+		),
+	)
+	sugar := logger.Sugar()
+	return sugar
+}
+
 var remotes *remotesCache = &remotesCache{
-	data: make(map[string]scale.RemoteNode),
+	data:  make(map[string]scale.RemoteNode),
+	sugar: newLogger(),
 }
 
 // RemoteNode contains metadata about another node
@@ -89,6 +103,7 @@ func newRemoteNodeWithID(addr string, id scale.Key) scale.RemoteNode {
 	remote = remotes.get(addr)
 
 	if remote != nil {
+		remotes.sugar.Infof("%+ v", remotes.data)
 		return remote
 	}
 
@@ -102,6 +117,8 @@ func newRemoteNodeWithID(addr string, id scale.Key) scale.RemoteNode {
 	}
 
 	remotes.set(addr, remote)
+
+	remotes.sugar.Infof("%+ v", remotes.data)
 
 	return remote
 }
