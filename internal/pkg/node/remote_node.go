@@ -105,7 +105,6 @@ func newRemoteNodeWithID(addr string, id scale.Key) scale.RemoteNode {
 	remote = remotes.get(addr)
 
 	if remote != nil {
-		remotes.sugar.Infof("%+ v", remotes.data)
 		return remote
 	}
 
@@ -119,8 +118,6 @@ func newRemoteNodeWithID(addr string, id scale.Key) scale.RemoteNode {
 	}
 
 	remotes.set(addr, remote)
-
-	remotes.sugar.Infof("%+ v", remotes.data)
 
 	return remote
 }
