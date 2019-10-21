@@ -212,6 +212,7 @@ func clearRemotes() {
 
 	for k := range remotes.data {
 		remote := remotes.data[k]
+		remotes.sugar.Infof("Closing connection to %v", remote.GetAddr())
 		err := remote.CloseConnection()
 		if err != nil {
 			remotes.sugar.Error(err)
