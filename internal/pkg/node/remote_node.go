@@ -2,6 +2,8 @@ package node
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"sync"
 
 	"go.uber.org/zap"
@@ -34,7 +36,7 @@ func (r *remotesCache) set(addr string, node scale.RemoteNode) {
 func newLogger() *zap.SugaredLogger {
 	logger, _ := zap.NewDevelopment(
 		zap.Fields(
-			zap.String("remotes", "idk bro"),
+			zap.String("remotes", fmt.Sprintf("pid: %d", os.Getpid())),
 		),
 	)
 	sugar := logger.Sugar()
@@ -123,6 +125,15 @@ func newRemoteNodeWithID(addr string, id scale.Key) scale.RemoteNode {
 	return remote
 }
 
+// CloseConnection closes the client connection
+func (r *RemoteNode) CloseConnection() error {
+	err := r.clientConnection.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Notify proxy
 func (r *RemoteNode) Notify(node scale.Node) error {
 	id := node.GetID()
@@ -196,4 +207,18 @@ func (r *RemoteNode) ClosestPrecedingFinger(id scale.Key) (scale.RemoteNode, err
 	}
 
 	return newRemoteNode(res.GetAddr()), nil
+}
+
+func clearRemotes() {
+	remotes.mutex.Lock()
+	defer remotes.mutex.Unlock()
+
+	for k := range remotes.data {
+		remote := remotes.data[k]
+		err := remote.CloseConnection()
+		if err != nil {
+			remotes.sugar.Error(err)
+		}
+		delete(remotes.data, k)
+	}
 }

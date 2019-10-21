@@ -203,10 +203,8 @@ func (node *Node) bootstrap(n scale.RemoteNode) {
 		start := fingerMath(node.id[:], i)
 
 		if keyspace.Equal(n.GetID(), node.id) {
-			node.sugar.Info("node bootstrap")
 			p, err = node.FindSuccessor(keyspace.ByteArrayToKey(start))
 		} else {
-			node.sugar.Info("n bootstrap")
 			p, err = n.FindSuccessor(keyspace.ByteArrayToKey(start))
 		}
 
@@ -285,35 +283,53 @@ func (node *Node) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 	successor := node.successor
 
 	if !keyspace.BetweenRightInclusive(key, node.predecessor.GetID(), node.successor.GetID()) {
-		n1, err = node.ClosestPrecedingFinger(key)
+		if keyspace.Equal(n1.GetID(), node.id) {
+			n1, err = node.ClosestPrecedingFinger(key)
+		} else {
+			n1, err = n1.ClosestPrecedingFinger(key)
+		}
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		return n1, nil
 	}
 
-	// ok let's get the successor of n1
+	if keyspace.Equal(n1.GetID(), node.id) {
+		successor, err = node.GetSuccessor()
+	} else {
+		successor, err = n1.GetSuccessor()
+	}
+	if err != nil {
+		return nil, err
+	}
 
-	successor, err = n1.GetSuccessor()
+	successor = newRemoteNode(successor.GetAddr())
+
 	if err != nil {
 		return nil, err
 	}
 
 	for !keyspace.BetweenRightInclusive(key, n1.GetID(), successor.GetID()) && !keyspace.Equal(n1.GetID(), node.id) {
-		n1, err = n1.ClosestPrecedingFinger(key)
+		if keyspace.Equal(n1.GetID(), node.id) {
+			n1, err = node.ClosestPrecedingFinger(key)
+		} else {
+			n1, err = n1.ClosestPrecedingFinger(key)
+		}
 		if err != nil {
 			return nil, err
 		}
 
-		successor, err = n1.GetSuccessor()
+		if keyspace.Equal(n1.GetID(), node.id) {
+			successor, err = node.GetSuccessor()
+		} else {
+			successor, err = n1.GetSuccessor()
+		}
 
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return newRemoteNode(n1.GetAddr()), nil
+	return n1, nil
 }
 
 // FindSuccessor returns the successor for this node
@@ -450,7 +466,7 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 		node.fingerTable[0] = remote
 		node.successor = remote
 		node.predecessor = remote
-		node.sugar.Infof("predecessor and successor setto %+v", remote)
+		node.sugar.Infof("predecessor and successor set to %+v %p", remote, remote)
 		node.bootstrap(remote)
 
 		return nil
@@ -460,14 +476,14 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 		successor := newRemoteNode(addr)
 		node.fingerTable[0] = successor
 		node.successor = successor
-		node.sugar.Infof("successor set to %+v", node.successor)
+		node.sugar.Infof("successor set to %+v %p", node.successor, node.successor)
 		node.bootstrap(successor)
 	}
 
 	if keyspace.Between(id, node.predecessor.GetID(), node.id) {
 		predecessor := newRemoteNode(addr)
 		node.predecessor = predecessor
-		node.sugar.Infof("predecessor set to %+v", node.predecessor)
+		node.sugar.Infof("predecessor set to %+v %p", node.predecessor, node.predecessor)
 		node.bootstrap(predecessor)
 	}
 
