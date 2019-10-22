@@ -2,6 +2,9 @@ package rpc
 
 import (
 	"log"
+	"time"
+
+	"google.golang.org/grpc/keepalive"
 
 	pb "github.com/msmedes/scale/internal/pkg/rpc/proto"
 	"google.golang.org/grpc"
@@ -9,7 +12,16 @@ import (
 
 // NewClient returns a ScaleClient from the node to a specific remote Node.
 func NewClient(addr string) (pb.ScaleClient, *grpc.ClientConn) {
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	opts := []grpc.DialOption{
+		grpc.WithInsecure(),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                10 * time.Second,
+			Timeout:             20 * time.Second,
+			PermitWithoutStream: true,
+		}),
+	}
+
+	conn, err := grpc.Dial(addr, opts...)
 
 	if err != nil {
 		log.Fatal(err)

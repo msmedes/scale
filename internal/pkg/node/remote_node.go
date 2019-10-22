@@ -2,7 +2,11 @@ package node
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"sync"
+
+	"go.uber.org/zap"
 
 	"github.com/msmedes/scale/internal/pkg/keyspace"
 	"github.com/msmedes/scale/internal/pkg/rpc"
@@ -14,6 +18,7 @@ import (
 type remotesCache struct {
 	mutex sync.RWMutex
 	data  map[string]scale.RemoteNode
+	sugar *zap.SugaredLogger
 }
 
 func (r *remotesCache) get(addr string) scale.RemoteNode {
@@ -28,8 +33,19 @@ func (r *remotesCache) set(addr string, node scale.RemoteNode) {
 	r.data[addr] = node
 }
 
+func newLogger() *zap.SugaredLogger {
+	logger, _ := zap.NewDevelopment(
+		zap.Fields(
+			zap.String("remotes", fmt.Sprintf("pid: %d", os.Getpid())),
+		),
+	)
+	sugar := logger.Sugar()
+	return sugar
+}
+
 var remotes *remotesCache = &remotesCache{
-	data: make(map[string]scale.RemoteNode),
+	data:  make(map[string]scale.RemoteNode),
+	sugar: newLogger(),
 }
 
 // RemoteNode contains metadata about another node
@@ -106,6 +122,15 @@ func newRemoteNodeWithID(addr string, id scale.Key) scale.RemoteNode {
 	return remote
 }
 
+// CloseConnection closes the client connection
+func (r *RemoteNode) CloseConnection() error {
+	err := r.clientConnection.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Notify proxy
 func (r *RemoteNode) Notify(node scale.Node) error {
 	id := node.GetID()
@@ -179,4 +204,19 @@ func (r *RemoteNode) ClosestPrecedingFinger(id scale.Key) (scale.RemoteNode, err
 	}
 
 	return newRemoteNode(res.GetAddr()), nil
+}
+
+func clearRemotes() {
+	remotes.mutex.Lock()
+	defer remotes.mutex.Unlock()
+
+	for k := range remotes.data {
+		remote := remotes.data[k]
+		remotes.sugar.Infof("Closing connection to %v", remote.GetAddr())
+		err := remote.CloseConnection()
+		if err != nil {
+			remotes.sugar.Error(err)
+		}
+		delete(remotes.data, k)
+	}
 }

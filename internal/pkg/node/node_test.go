@@ -24,6 +24,7 @@ func newAddr(t *testing.T) string {
 }
 
 func TestNewNode(t *testing.T) {
+	clearRemotes()
 	n := NewNode(Addr1)
 
 	t.Run("sets successor to itself", func(t *testing.T) {
@@ -62,6 +63,7 @@ func TestNewNode(t *testing.T) {
 }
 
 func TestCheckPredecessor(t *testing.T) {
+	clearRemotes()
 	n := NewNode(Addr1)
 
 	t.Run("does nothing when predecessor is itself", func(t *testing.T) {
@@ -93,6 +95,7 @@ func TestCheckPredecessor(t *testing.T) {
 }
 
 func TestJoin(t *testing.T) {
+	clearRemotes()
 	t.Run("one other node in network", func(t *testing.T) {
 		n2 := NewNode(Addr2)
 
@@ -133,6 +136,8 @@ func TestJoin(t *testing.T) {
 }
 
 func TestClosestPrecedingFinger(t *testing.T) {
+	clearRemotes()
+
 	n := &Node{addr: newAddr(t), id: [4]byte{1}}
 	nRemote := n.toRemoteNode()
 	n.fingerTable = newFingerTable(nRemote)
@@ -196,8 +201,9 @@ func TestClosestPrecedingFinger(t *testing.T) {
 }
 
 func TestFindPredecessor(t *testing.T) {
+	clearRemotes()
 	t.Run("simple case - node only aware of itself", func(t *testing.T) {
-		n := &Node{addr: newAddr(t), id: [4]byte{1}}
+		n := &Node{addr: Addr1, id: [4]byte{1}}
 		n.predecessor = n.toRemoteNode()
 		n.successor = n.toRemoteNode()
 		key := [4]byte{0}
@@ -209,11 +215,12 @@ func TestFindPredecessor(t *testing.T) {
 			t.Error(err)
 		}
 
+		remotes.sugar.Infof("pred %+v", pred)
 		if !keyspace.Equal(pred.GetID(), n.id) {
 			t.Errorf("expected predecessor to be %x, got %x", n.id, pred.GetID())
 		}
 	})
-
+	clearRemotes()
 	t.Run("2 nodes - hi key", func(t *testing.T) {
 		n1 := &Node{addr: newAddr(t), id: [4]byte{1}}
 
@@ -237,10 +244,10 @@ func TestFindPredecessor(t *testing.T) {
 		}
 
 		if !keyspace.Equal(p.GetID(), n2.GetID()) {
-			t.Errorf("expected predecessor to be %x, got %x", n2.GetID(), p.GetID())
+			t.Errorf("expected predecessor to be %x, got %x, %x", n2.GetID(), p.GetID(), n1.GetID())
 		}
 	})
-
+	clearRemotes()
 	t.Run("2 nodes - lo key", func(t *testing.T) {
 		n1 := &Node{addr: newAddr(t), id: [4]byte{4}}
 
@@ -269,11 +276,8 @@ func TestFindPredecessor(t *testing.T) {
 		}
 
 		if !keyspace.Equal(p.GetID(), n1.GetID()) {
-			t.Errorf("expected predecessor to be %x, got %x", n1.GetID(), p.GetID())
+			t.Errorf("expected predecessor to be % x, got % x", n1.GetID(), p.GetID())
 		}
 	})
 
-	t.Run("2 nodes - infinite loop", func(t *testing.T) {
-		t.Skip("TODO: infinite loop is caused by key=869dff00 n1=f81d1c11 p=00869dfe ")
-	})
 }

@@ -9,7 +9,7 @@ import (
 )
 
 // Equal whether 2 keys are equal
-func Equal(a scale.Key, b scale.Key) bool {
+func Equal(a, b scale.Key) bool {
 	return bytes.Equal(a[:], b[:])
 }
 
@@ -34,7 +34,7 @@ func ByteArrayToKey(arr []byte) scale.Key {
 
 // KeyToString Convert a key to a string
 func KeyToString(key scale.Key) string {
-	return fmt.Sprintf("%x", key)
+	return fmt.Sprintf("% x", key)
 }
 
 // Between returns whether x is between a and b

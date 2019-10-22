@@ -26,6 +26,7 @@ type RemoteNode interface {
 
 	Ping() error
 	Notify(Node) error
+	CloseConnection() error
 }
 
 // Node represents the current node and operations it is responsible for
