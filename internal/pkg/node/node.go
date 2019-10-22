@@ -3,7 +3,9 @@ package node
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"log"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -33,6 +35,7 @@ type Node struct {
 	remoteConnections map[scale.Key]*RemoteNode
 	shutdownChannel   chan struct{}
 	mutex             sync.RWMutex
+	functions         map[string]reflect.Value
 }
 
 // NewNode create a new node
@@ -179,6 +182,13 @@ func (node *Node) join(remote scale.RemoteNode) {
 	if err != nil {
 		node.sugar.Fatal("no successor to predecessor found")
 	}
+
+	// ok this is what the new function calls would look like
+	remoteTest, err := node.CallCommand(p, "GetSuccessor", make([]reflect.Value, 0))
+	if err != nil {
+		node.sugar.Info("nope")
+	}
+	node.sugar.Infof("holy shit did that work? %+v", remoteTest)
 
 	for !keyspace.BetweenRightInclusive(node.id, p.GetID(), s.GetID()) && !keyspace.Equal(p.GetID(), s.GetID()) {
 		p = s
@@ -540,7 +550,57 @@ func (node *Node) fixNextFinger(next int) int {
 	return next + 1
 }
 
-// GetStore returns all the keys in the store
+// GetKeys returns all the keys in the store
 func (node *Node) GetKeys() []string {
 	return node.store.KeysAsString()
+}
+
+// CallCommand should theoretically call the correct function on the correct
+// Node or RemoteNode object aka Mike's first foray into metaprogramming
+func (node *Node) CallCommand(remote scale.RemoteNode, functionName string, in []reflect.Value) (scale.RemoteNode, error) {
+	var (
+		nodeReflect reflect.Value
+		function    reflect.Value
+		response    []reflect.Value
+		err         error
+	)
+
+	if keyspace.Equal(node.GetID(), remote.GetID()) {
+		nodeReflect = reflect.ValueOf(node)
+		node.sugar.Infof("%+v", nodeReflect)
+		function, err = functionFactory(nodeReflect, functionName, len(in))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		nodeReflect = reflect.ValueOf(remote)
+		function, err = functionFactory(nodeReflect, functionName, len(in))
+		if err != nil {
+			return nil, err
+		}
+	}
+	// if len(in) == 0 {
+	// 	response = function.Call(nil)
+	// } else {
+	response = function.Call(in)
+	// }
+	node.sugar.Infof("+%v", response)
+	remoteNode := response[0].Interface().(*RemoteNode)
+
+	if response[1].Interface() != nil {
+		responseErr := response[1].Interface().(error)
+		return nil, responseErr
+	}
+
+	return remoteNode, nil
+}
+
+// lol what is this java
+func functionFactory(value reflect.Value, functionName string, numParams int) (reflect.Value, error) {
+	function := value.MethodByName(fmt.Sprintf("%s", functionName))
+	t := function.Type()
+	if numParams != t.NumIn() {
+		return reflect.ValueOf(nil), fmt.Errorf("invalid number of arguments. got: %v, want: %v", numParams, t.NumIn())
+	}
+	return function, nil
 }
