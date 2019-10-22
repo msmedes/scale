@@ -376,6 +376,7 @@ func (node *Node) ClosestPrecedingFinger(id scale.Key) (scale.RemoteNode, error)
 func (node *Node) GetPredecessor() (scale.RemoteNode, error) {
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
+
 	if node.predecessor != nil {
 		return node.predecessor, nil
 	}
@@ -476,8 +477,6 @@ func (node *Node) checkPredecessor() {
 
 // Notify is called when another node thinks it is our predecessor
 func (node *Node) Notify(id scale.Key, addr string) error {
-	node.mutex.Lock()
-	node.mutex.Unlock()
 
 	if keyspace.Equal(node.id, node.successor.GetID()) && keyspace.Equal(node.id, node.predecessor.GetID()) {
 		node.mutex.Lock()
@@ -525,8 +524,7 @@ func (node *Node) fixNextFinger(next int) int {
 
 	nextHash := fingerMath(node.id[:], next)
 	successor, _ := node.FindSuccessor(keyspace.ByteArrayToKey(nextHash))
-	successorRemote := successor.(*RemoteNode)
-	finger := newRemoteNode(successorRemote.Addr)
+	finger := newRemoteNode(successor.GetAddr())
 	node.fingerTable[next] = finger
 	return next + 1
 }
