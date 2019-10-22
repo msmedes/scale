@@ -256,9 +256,16 @@ func (node *Node) SetLocal(key scale.Key, value []byte) error {
 
 // Get return a value stored on this node
 func (node *Node) Get(key scale.Key) ([]byte, error) {
+	var (
+		val []byte
+		err error
+	)
 	succ, err := node.FindSuccessor(key)
-	remoteNode := succ
-	val, err := remoteNode.GetLocal(key)
+	if keyspace.Equal(succ.GetID(), node.id) {
+		val, err = node.GetLocal(key)
+	} else {
+		val, err = succ.GetLocal(key)
+	}
 
 	if err != nil {
 		return nil, err
@@ -270,8 +277,12 @@ func (node *Node) Get(key scale.Key) ([]byte, error) {
 // Set set a value in the local store
 func (node *Node) Set(key scale.Key, value []byte) error {
 	succ, err := node.FindSuccessor(key)
-	remoteNode := newRemoteNode(succ.GetAddr())
-	err = remoteNode.SetLocal(key, value)
+	if keyspace.Equal(node.id, succ.GetID()) {
+		err = node.SetLocal(key, value)
+	} else {
+		remoteNode := newRemoteNode(succ.GetAddr())
+		err = remoteNode.SetLocal(key, value)
+	}
 
 	if err != nil {
 		return err
@@ -527,4 +538,9 @@ func (node *Node) fixNextFinger(next int) int {
 	finger := newRemoteNode(successor.GetAddr())
 	node.fingerTable[next] = finger
 	return next + 1
+}
+
+// GetStore returns all the keys in the store
+func (node *Node) GetKeys() []string {
+	return node.store.KeysAsString()
 }

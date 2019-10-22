@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/msmedes/scale/internal/pkg/scale"
@@ -56,5 +57,17 @@ func (s *MemoryStore) Keys() []scale.Key {
 		keys = append(keys, k)
 	}
 
+	return keys
+}
+
+// KeysAsString don't @ me over this function name bro
+func (s *MemoryStore) KeysAsString() []string {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	keys := make([]string, 0, len(s.data))
+
+	for k := range s.data {
+		keys = append(keys, fmt.Sprintf("%s", k))
+	}
 	return keys
 }

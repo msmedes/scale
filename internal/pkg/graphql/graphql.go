@@ -104,6 +104,7 @@ func (g *GraphQL) buildSchema() {
 				"predecessor": &gql.Field{Type: remoteNodeMetadataType},
 				"successor":   &gql.Field{Type: remoteNodeMetadataType},
 				"fingerTable": &gql.Field{Type: gql.NewNonNull(gql.NewList(gql.NewNonNull(gql.String)))},
+				"keys":        &gql.Field{Type: gql.NewNonNull(gql.NewList(gql.NewNonNull(gql.String)))},
 			},
 		},
 	)
@@ -139,6 +140,7 @@ func (g *GraphQL) buildSchema() {
 							Addr:        nodeMeta.GetAddr(),
 							Port:        nodeMeta.GetPort(),
 							FingerTable: ft,
+							Keys:        nodeMeta.GetKeys(),
 						}
 
 						if err != nil {

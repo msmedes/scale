@@ -36,6 +36,7 @@ type Node interface {
 	Get(Key) ([]byte, error)
 	GetFingerTableIDs() []Key
 	GetPort() string
+	GetKeys() []string
 	Notify(Key, string) error
 	Set(Key, []byte) error
 	TransferKeys(Key, string)

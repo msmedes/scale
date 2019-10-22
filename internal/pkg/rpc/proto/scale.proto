@@ -24,6 +24,7 @@ message NodeMetadata {
   string successorAddr = 6;
   repeated bytes fingerTable = 7;
   string port = 8;
+  repeated string keys = 9;
 }
 
 message RemoteNode {

@@ -206,6 +206,7 @@ func (r *RPC) GetNodeMetadata(context.Context, *pb.Empty) (*pb.NodeMetadata, err
 		Addr:        r.node.GetAddr(),
 		Port:        r.node.GetPort(),
 		FingerTable: ft,
+		Keys:        r.node.GetKeys(),
 	}
 
 	predecessor, err := r.node.GetPredecessor()
