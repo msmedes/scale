@@ -183,12 +183,16 @@ func (node *Node) join(remote scale.RemoteNode) {
 		node.sugar.Fatal("no successor to predecessor found")
 	}
 
-	// ok this is what the new function calls would look like
-	remoteTest, err := node.CallCommand(p, "GetSuccessor", make([]reflect.Value, 0))
-	if err != nil {
-		node.sugar.Info("nope")
-	}
-	node.sugar.Infof("holy shit did that work? %+v", remoteTest)
+	// ok this is what the new function call would look like
+	// the last arg are the params, we can just wrap them in interfaces
+	// like make([]reflect.Value{}{{key}, {node}}) or just make a helper function
+	// to create the interface
+
+	// remoteTest, err := node.CallCommand(p, "GetSuccessor", make([]reflect.Value, 0))
+	// if err != nil {
+	// 	node.sugar.Info("nope")
+	// }
+	// node.sugar.Infof("holy shit did that work? %+v", remoteTest) // it did
 
 	for !keyspace.BetweenRightInclusive(node.id, p.GetID(), s.GetID()) && !keyspace.Equal(p.GetID(), s.GetID()) {
 		p = s
@@ -557,7 +561,7 @@ func (node *Node) GetKeys() []string {
 
 // CallCommand should theoretically call the correct function on the correct
 // Node or RemoteNode object aka Mike's first foray into metaprogramming
-func (node *Node) CallCommand(remote scale.RemoteNode, functionName string, in []reflect.Value) (scale.RemoteNode, error) {
+func (node *Node) CallCommand(remote scale.RemoteNode, funcName string, in []reflect.Value) (*RemoteNode, error) {
 	var (
 		nodeReflect reflect.Value
 		function    reflect.Value
@@ -568,24 +572,24 @@ func (node *Node) CallCommand(remote scale.RemoteNode, functionName string, in [
 	if keyspace.Equal(node.GetID(), remote.GetID()) {
 		nodeReflect = reflect.ValueOf(node)
 		node.sugar.Infof("%+v", nodeReflect)
-		function, err = functionFactory(nodeReflect, functionName, len(in))
+		function, err = functionFactory(nodeReflect, funcName, len(in))
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		nodeReflect = reflect.ValueOf(remote)
-		function, err = functionFactory(nodeReflect, functionName, len(in))
+		function, err = functionFactory(nodeReflect, funcName, len(in))
 		if err != nil {
 			return nil, err
 		}
 	}
-	// if len(in) == 0 {
-	// 	response = function.Call(nil)
-	// } else {
+	// Ok we should unpack the type in the function that calls it, I'm thinking
+	// but there's probably a way to call TypeOf(reponse[0]) or something in the cast
+	// so we can actually use this function in testing
+	// Oh wait, we could return an interface with whatever in it and then cast on the other end
+
 	response = function.Call(in)
-	// }
-	node.sugar.Infof("+%v", response)
-	remoteNode := response[0].Interface().(*RemoteNode)
+	remoteNode := response[0].Interface().(*RemoteNode) //maybe call .(TypeOf(response[0]) here?)
 
 	if response[1].Interface() != nil {
 		responseErr := response[1].Interface().(error)
@@ -593,6 +597,7 @@ func (node *Node) CallCommand(remote scale.RemoteNode, functionName string, in [
 	}
 
 	return remoteNode, nil
+
 }
 
 // lol what is this java
