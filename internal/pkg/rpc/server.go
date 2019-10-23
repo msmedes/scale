@@ -283,11 +283,23 @@ func (r *RPC) Shutdown() {
 }
 
 // SetPredecessor sets the predecessor to the node passed in
-func (r *RPC) SetPredecessor(ctx context.Context, in *pb.RemoteNode) (*pb.Success, error) {
-	return &pb.Success{}, nil
+func (r *RPC) SetPredecessor(ctx context.Context, in *pb.ShutdownRequest) (*pb.Empty, error) {
+	err := r.node.SetPredecessor(in.EssorAddr, in.ClientAddr)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Empty{}, nil
 }
 
 // SetSuccessor sets the predecessor to the node passed in
-func (r *RPC) SetSuccessor(ctx context.Context, in *pb.RemoteNode) (*pb.Success, error) {
-	return &pb.Success{}, nil
+func (r *RPC) SetSuccessor(ctx context.Context, in *pb.ShutdownRequest) (*pb.Empty, error) {
+	err := r.node.SetSuccessor(in.EssorAddr, in.ClientAddr)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Empty{}, nil
 }

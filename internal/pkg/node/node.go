@@ -401,9 +401,10 @@ func (node *Node) Shutdown() {
 	close(node.shutdownChannel)
 
 	if !keyspace.Equal(node.id, node.successor.GetID()) {
+		node.TransferKeys(node.predecessor.GetID(), node.successor.GetAddr())
+		node.successor.SetPredecessor(node.predecessor.GetAddr(), node.GetAddr())
+		node.predecessor.SetSuccessor(node.successor.GetAddr(), node.GetAddr())
 	}
-
-	// TODO: Notify predecessor and successor that their
 
 	for _, remoteConnection := range remotes.data {
 		node.sugar.Infof("Closing connection to %s", remoteConnection.GetAddr())
@@ -600,10 +601,16 @@ func (node *Node) SetupCloseHandler() {
 	}()
 }
 
-func (node *Node) SetSuccessor(id scale.Key, addr string) error {
+// SetSuccessor sets the successor
+func (node *Node) SetSuccessor(succAddr string, clientAddr string) error {
+	node.successor = newRemoteNode(succAddr)
+	remotes.data[clientAddr].CloseConnection()
 	return nil
 }
 
-func (node *Node) SetPredecessor(id scale.Key, addr string) error {
+// SetPredecessor sets the predecessor
+func (node *Node) SetPredecessor(predAddr string, clientAddr string) error {
+	node.predecessor = newRemoteNode(predAddr)
+	remotes.data[clientAddr].CloseConnection()
 	return nil
 }

@@ -18,8 +18,8 @@ type baseNode interface {
 	GetPredecessor() (RemoteNode, error)
 	GetSuccessor() (RemoteNode, error)
 	SetLocal(Key, []byte) error
-	SetPredecessor(Key, string) error
-	SetSuccessor(Key, string) error
+	SetPredecessor(string, string) error
+	SetSuccessor(string, string) error
 }
 
 // RemoteNode contains metadata (ID and Address) about another node in the network
