@@ -1,7 +1,6 @@
 package node
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"log"
@@ -126,12 +125,12 @@ func (node *Node) StabilizationStart() {
 func (node *Node) TransferKeys(id scale.Key, addr string) {
 	remote := newRemoteNode(addr)
 
-	if bytes.Compare(id[:], node.id[:]) >= 0 {
+	if keyspace.GTE(id, node.id) {
 		return
 	}
 
 	for _, k := range node.store.Keys() {
-		if bytes.Compare(k[:], id[:]) >= 0 {
+		if keyspace.GTE(k, id) {
 			break
 		}
 
@@ -174,16 +173,7 @@ func (node *Node) join(remote scale.RemoteNode) {
 	}
 
 	p := s
-	// if keyspace.Equal(p.GetID(), node.id) {
-	// 	s, err = node.GetSuccessor()
-	// } else {
-	// 	s, err = p.GetSuccessor()
-	// }
-	// if err != nil {
-	// 	node.sugar.Fatal("no successor to predecessor found")
-	// }
-
-	s, err = node.CallCommand(p, "GetSuccessor", make([]reflect.Value, 0))
+	s, err = node.CallFunction("GetSuccessor", p)
 	if err != nil {
 		node.sugar.Error(err)
 	}
@@ -218,11 +208,13 @@ func (node *Node) bootstrap(n scale.RemoteNode) {
 		start := fingerMath(node.id[:], i)
 		startKey := keyspace.ByteArrayToKey(start)
 
-		if keyspace.Equal(n.GetID(), node.id) {
-			p, err = node.FindSuccessor(startKey)
-		} else {
-			p, err = n.FindSuccessor(startKey)
-		}
+		// if keyspace.Equal(n.GetID(), node.id) {
+		// 	p, err = node.FindSuccessor(startKey)
+		// } else {
+		// 	p, err = n.FindSuccessor(startKey)
+		// }
+
+		p, err = node.CallFunction("FindSuccessor", n, startKey)
 
 		if err != nil {
 			node.sugar.Fatal(err)
@@ -235,11 +227,7 @@ func (node *Node) bootstrap(n scale.RemoteNode) {
 		for keyspace.GT(p.GetID(), startKey) {
 			s = p
 
-			if keyspace.Equal(p.GetID(), node.id) {
-				p, err = node.GetPredecessor()
-			} else {
-				p, err = p.GetPredecessor()
-			}
+			p, err = node.CallFunction("GetPredecessor", p)
 
 			if err != nil {
 				node.sugar.Fatal(err)
@@ -311,18 +299,10 @@ func (node *Node) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 	successor := node.successor
 
 	if !keyspace.BetweenRightInclusive(key, node.predecessor.GetID(), node.successor.GetID()) {
-		if keyspace.Equal(n1.GetID(), node.id) {
-			n1, err = node.ClosestPrecedingFinger(key)
-		} else {
-			n1, err = n1.ClosestPrecedingFinger(key)
-		}
+		n1, err = node.CallFunction("ClosestPrecedingFinger", n1, key)
 	}
 
-	if keyspace.Equal(n1.GetID(), node.id) {
-		successor, err = node.GetSuccessor()
-	} else {
-		successor, err = n1.GetSuccessor()
-	}
+	successor, err = node.CallFunction("GetSuccessor", n1)
 	if err != nil {
 		return nil, err
 	}
@@ -334,20 +314,17 @@ func (node *Node) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 	}
 
 	for !keyspace.BetweenRightInclusive(key, n1.GetID(), successor.GetID()) && !keyspace.Equal(n1.GetID(), node.id) {
-		if keyspace.Equal(n1.GetID(), node.id) {
-			n1, err = node.ClosestPrecedingFinger(key)
-		} else {
-			n1, err = n1.ClosestPrecedingFinger(key)
-		}
+		// if keyspace.Equal(n1.GetID(), node.id) {
+		// 	n1, err = node.ClosestPrecedingFinger(key)
+		// } else {
+		// 	n1, err = n1.ClosestPrecedingFinger(key)
+		// }
+		n1, err = node.CallFunction("ClosestPrecedingFinger", n1, key)
 		if err != nil {
 			return nil, err
 		}
 
-		if keyspace.Equal(n1.GetID(), node.id) {
-			successor, err = node.GetSuccessor()
-		} else {
-			successor, err = n1.GetSuccessor()
-		}
+		successor, err = node.CallFunction("GetSuccessor", n1)
 
 		if err != nil {
 			return nil, err
@@ -437,11 +414,7 @@ func (node *Node) stabilize() {
 	var x scale.RemoteNode
 	var err error
 
-	if keyspace.Equal(node.id, node.predecessor.GetID()) {
-		x, err = node.GetSuccessor()
-	} else {
-		x, err = node.predecessor.GetSuccessor()
-	}
+	x, err = node.CallFunction("GetSuccessor", node.predecessor)
 
 	if err != nil {
 		node.sugar.Fatal(err)
@@ -454,12 +427,7 @@ func (node *Node) stabilize() {
 		node.mutex.Unlock()
 	}
 
-	if keyspace.Equal(node.successor.GetID(), node.id) {
-		x, err = node.GetSuccessor()
-	} else {
-		x, err = node.successor.GetSuccessor()
-	}
-
+	x, err = node.CallFunction("GetSuccessor", node.successor)
 	if err != nil {
 		node.sugar.Error(err)
 	}
@@ -553,15 +521,21 @@ func (node *Node) GetKeys() []string {
 	return node.store.KeysAsString()
 }
 
-// CallCommand should theoretically call the correct function on the correct
+// CallFunction should theoretically call the correct function on the correct
 // Node or RemoteNode object aka Mike's first foray into metaprogramming
-func (node *Node) CallCommand(remote scale.RemoteNode, funcName string, in []reflect.Value) (scale.RemoteNode, error) {
+func (node *Node) CallFunction(funcName string, remote scale.RemoteNode, params ...interface{}) (scale.RemoteNode, error) {
 	var (
 		nodeReflect reflect.Value
 		function    reflect.Value
 		response    []reflect.Value
 		err         error
 	)
+
+	// I tried to make this a separate function but it didn't work ¯\_(ツ)_/¯
+	in := make([]reflect.Value, len(params))
+	for k, param := range params {
+		in[k] = reflect.ValueOf(param)
+	}
 
 	if keyspace.Equal(node.GetID(), remote.GetID()) {
 		nodeReflect = reflect.ValueOf(node)
@@ -576,10 +550,6 @@ func (node *Node) CallCommand(remote scale.RemoteNode, funcName string, in []ref
 			return nil, err
 		}
 	}
-	// Ok we should unpack the type in the function that calls it, I'm thinking
-	// but there's probably a way to call TypeOf(reponse[0]) or something in the cast
-	// so we can actually use this function in testing
-	// Oh wait, we could return an interface with whatever in it and then cast on the other end
 
 	response = function.Call(in)
 
@@ -597,9 +567,9 @@ func (node *Node) CallCommand(remote scale.RemoteNode, funcName string, in []ref
 // lol what is this java
 func functionFactory(value reflect.Value, functionName string, numParams int) (reflect.Value, error) {
 	function := value.MethodByName(fmt.Sprintf("%s", functionName))
-	t := function.Type()
-	if numParams != t.NumIn() {
-		return reflect.ValueOf(nil), fmt.Errorf("invalid number of arguments. got: %v, want: %v", numParams, t.NumIn())
+	numIn := function.Type().NumIn()
+	if numParams != numIn {
+		return reflect.ValueOf(nil), fmt.Errorf("invalid number of arguments. got: %v, want: %v", numParams, numIn)
 	}
 	return function, nil
 }

@@ -48,14 +48,24 @@ func Between(x, a, b scale.Key) bool {
 	return GT(x, a) && LT(x, b)
 }
 
-// GT greater than
+// GT x greater than a
 func GT(x, a scale.Key) bool {
 	return bytes.Compare(x[:], a[:]) > 0
 }
 
-// LT less than
+// LT x less than a
 func LT(x, a scale.Key) bool {
 	return bytes.Compare(x[:], a[:]) < 0
+}
+
+// GTE x greater than equal to a
+func GTE(x, a scale.Key) bool {
+	return bytes.Compare(x[:], a[:]) >= 0
+}
+
+// LTE x less than equal to a
+func LTE(x, a scale.Key) bool {
+	return bytes.Compare(x[:], a[:]) <= 0
 }
 
 // BetweenRightInclusive returns whether n is between lower and upper, upper
