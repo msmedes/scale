@@ -403,7 +403,10 @@ func (node *Node) Shutdown() {
 	if !keyspace.Equal(node.id, node.successor.GetID()) {
 	}
 
-	for _, remoteConnection := range node.remoteConnections {
+	// TODO: Notify predecessor and successor that their
+
+	for _, remoteConnection := range remotes.data {
+		node.sugar.Infof("Closing connection to %s", remoteConnection.GetAddr())
 		remoteConnection.CloseConnection()
 	}
 	node.sugar.Info("shutdown?")
@@ -595,4 +598,12 @@ func (node *Node) SetupCloseHandler() {
 		node.sugar.Info("K bye!")
 		os.Exit(0)
 	}()
+}
+
+func (node *Node) SetSuccessor(id Scale.Key, addr string) error {
+	return nil
+}
+
+func (node *Node) SetPredecessor(id Scale.Key, addr string) error {
+	return nil
 }

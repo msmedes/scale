@@ -281,3 +281,13 @@ func (r *RPC) Shutdown() {
 	r.logger.Sync()
 	r.sugar.Sync()
 }
+
+// SetPredecessor sets the predecessor to the node passed in
+func (r *RPC) SetPredecessor(ctx context.Context, in *pb.RemoteNode) (*pb.Success, error) {
+	return &pb.Success{}, nil
+}
+
+// SetSuccessor sets the predecessor to the node passed in
+func (r *RPC) SetSuccessor(ctx context.Context, in *pb.RemoteNode) (*pb.Success, error) {
+	return &pb.Success{}, nil
+}

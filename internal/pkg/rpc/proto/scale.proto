@@ -39,6 +39,8 @@ service Scale {
   rpc GetPredecessor(Empty) returns (RemoteNode) {}
   rpc FindPredecessor(RemoteQuery) returns (RemoteNode) {}
   rpc FindSuccessor(RemoteQuery) returns (RemoteNode) {}
+  rpc SetPredecessor(RemoteNode) returns (Success) {}
+  rpc SetSuccessor(RemoteNode) returns (Success) {}
   rpc Notify(RemoteNode) returns (Success) {}
   rpc GetLocal(GetRequest) returns (GetResponse) {}
   rpc SetLocal(SetRequest) returns (Success) {}

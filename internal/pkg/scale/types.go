@@ -9,24 +9,26 @@ const M = 32
 type Key = [M / 8]byte
 
 type baseNode interface {
-	GetAddr() string
-	GetID() Key
+	ClosestPrecedingFinger(Key) (RemoteNode, error)
 	FindPredecessor(Key) (RemoteNode, error)
 	FindSuccessor(Key) (RemoteNode, error)
-	GetSuccessor() (RemoteNode, error)
-	GetPredecessor() (RemoteNode, error)
+	GetAddr() string
+	GetID() Key
 	GetLocal(Key) ([]byte, error)
+	GetPredecessor() (RemoteNode, error)
+	GetSuccessor() (RemoteNode, error)
 	SetLocal(Key, []byte) error
-	ClosestPrecedingFinger(Key) (RemoteNode, error)
+	SetPredecessor(Key, string) error
+	SetSuccessor(Key, string) error
 }
 
 // RemoteNode contains metadata (ID and Address) about another node in the network
 type RemoteNode interface {
 	baseNode
 
-	Ping() error
-	Notify(Node) error
 	CloseConnection() error
+	Notify(Node) error
+	Ping() error
 }
 
 // Node represents the current node and operations it is responsible for
