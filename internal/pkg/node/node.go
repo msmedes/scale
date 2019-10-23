@@ -406,7 +406,7 @@ func (node *Node) Shutdown() {
 	}
 
 	for _, remoteConnection := range node.remoteConnections {
-		remoteConnection.clientConnection.Close()
+		remoteConnection.CloseConnection()
 	}
 }
 
@@ -561,7 +561,6 @@ func (node *Node) CallFunction(funcName string, remote scale.RemoteNode, params 
 	}
 
 	return remoteNode.(scale.RemoteNode), nil
-
 }
 
 // lol what is this java
