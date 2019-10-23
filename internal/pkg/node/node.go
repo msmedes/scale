@@ -174,25 +174,19 @@ func (node *Node) join(remote scale.RemoteNode) {
 	}
 
 	p := s
-	if keyspace.Equal(p.GetID(), node.id) {
-		s, err = node.GetSuccessor()
-	} else {
-		s, err = p.GetSuccessor()
-	}
-	if err != nil {
-		node.sugar.Fatal("no successor to predecessor found")
-	}
-
-	// ok this is what the new function call would look like
-	// the last arg are the params, we can just wrap them in interfaces
-	// like make([]reflect.Value{}{{key}, {node}}) or just make a helper function
-	// to create the interface
-
-	// remoteTest, err := node.CallCommand(p, "GetSuccessor", make([]reflect.Value, 0))
-	// if err != nil {
-	// 	node.sugar.Info("nope")
+	// if keyspace.Equal(p.GetID(), node.id) {
+	// 	s, err = node.GetSuccessor()
+	// } else {
+	// 	s, err = p.GetSuccessor()
 	// }
-	// node.sugar.Infof("holy shit did that work? %+v", remoteTest) // it did
+	// if err != nil {
+	// 	node.sugar.Fatal("no successor to predecessor found")
+	// }
+
+	s, err = node.CallCommand(p, "GetSuccessor", make([]reflect.Value, 0))
+	if err != nil {
+		node.sugar.Error(err)
+	}
 
 	for !keyspace.BetweenRightInclusive(node.id, p.GetID(), s.GetID()) && !keyspace.Equal(p.GetID(), s.GetID()) {
 		p = s
@@ -561,7 +555,7 @@ func (node *Node) GetKeys() []string {
 
 // CallCommand should theoretically call the correct function on the correct
 // Node or RemoteNode object aka Mike's first foray into metaprogramming
-func (node *Node) CallCommand(remote scale.RemoteNode, funcName string, in []reflect.Value) (*RemoteNode, error) {
+func (node *Node) CallCommand(remote scale.RemoteNode, funcName string, in []reflect.Value) (scale.RemoteNode, error) {
 	var (
 		nodeReflect reflect.Value
 		function    reflect.Value
@@ -571,7 +565,6 @@ func (node *Node) CallCommand(remote scale.RemoteNode, funcName string, in []ref
 
 	if keyspace.Equal(node.GetID(), remote.GetID()) {
 		nodeReflect = reflect.ValueOf(node)
-		node.sugar.Infof("%+v", nodeReflect)
 		function, err = functionFactory(nodeReflect, funcName, len(in))
 		if err != nil {
 			return nil, err
@@ -589,14 +582,15 @@ func (node *Node) CallCommand(remote scale.RemoteNode, funcName string, in []ref
 	// Oh wait, we could return an interface with whatever in it and then cast on the other end
 
 	response = function.Call(in)
-	remoteNode := response[0].Interface().(*RemoteNode) //maybe call .(TypeOf(response[0]) here?)
+
+	remoteNode := response[0].Interface()
 
 	if response[1].Interface() != nil {
 		responseErr := response[1].Interface().(error)
 		return nil, responseErr
 	}
 
-	return remoteNode, nil
+	return remoteNode.(scale.RemoteNode), nil
 
 }
 
