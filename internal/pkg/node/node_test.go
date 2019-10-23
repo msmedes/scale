@@ -215,7 +215,6 @@ func TestFindPredecessor(t *testing.T) {
 			t.Error(err)
 		}
 
-		remotes.sugar.Infof("pred %+v", pred)
 		if !keyspace.Equal(pred.GetID(), n.id) {
 			t.Errorf("expected predecessor to be %x, got %x", n.id, pred.GetID())
 		}
