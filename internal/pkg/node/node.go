@@ -521,8 +521,8 @@ func (node *Node) GetKeys() []string {
 	return node.store.KeysAsString()
 }
 
-// CallFunction should theoretically call the correct function on the correct
-// Node or RemoteNode object aka Mike's first foray into metaprogramming
+// CallFunction is a handy little function to remove all the
+// if keyspace.Equal(node.id, remote.ID) boilerplate
 func (node *Node) CallFunction(funcName string, remote scale.RemoteNode, params ...interface{}) (scale.RemoteNode, error) {
 	var (
 		nodeReflect reflect.Value
@@ -531,7 +531,9 @@ func (node *Node) CallFunction(funcName string, remote scale.RemoteNode, params 
 		err         error
 	)
 
-	// I tried to make this a separate function but it didn't work ¯\_(ツ)_/¯
+	// Call was rejecting the length of the returned []reflect.Value for
+	// functions with no params when these few lines were in their own
+	// function, but it works this way for some reason?
 	in := make([]reflect.Value, len(params))
 	for k, param := range params {
 		in[k] = reflect.ValueOf(param)
