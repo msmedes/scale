@@ -39,7 +39,7 @@ type Node interface {
 	GetKeys() []string
 	Notify(Key, string) error
 	Set(Key, []byte) error
-	TransferKeys(Key, string)
+	TransferKeys(Key, string) int
 }
 
 // Store represents a Scale-compatible underlying data store

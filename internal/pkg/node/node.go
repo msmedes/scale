@@ -4,9 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"reflect"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/msmedes/scale/internal/pkg/keyspace"
@@ -16,7 +19,7 @@ import (
 )
 
 // StabilizeInterval how often to execute stabilization in seconds
-const StabilizeInterval = 1
+const StabilizeInterval = 5
 
 // Node main node class
 type Node struct {
@@ -67,6 +70,7 @@ func NewNode(addr string) *Node {
 	sugar := logger.Sugar()
 	node.sugar = sugar
 	node.logger = logger
+	node.SetupCloseHandler()
 
 	return node
 }
@@ -122,20 +126,21 @@ func (node *Node) StabilizationStart() {
 }
 
 // TransferKeys transfer keys to the given node
-func (node *Node) TransferKeys(id scale.Key, addr string) {
+func (node *Node) TransferKeys(id scale.Key, addr string) (count int) {
+	count = 0
 	remote := newRemoteNode(addr)
 
-	if keyspace.GTE(id, node.id) {
+	if keyspace.Equal(id, node.id) {
 		return
 	}
 
 	for _, k := range node.store.Keys() {
 		if keyspace.GTE(k, id) {
-			break
+			node.transferKey(k, remote)
+			count++
 		}
-
-		node.transferKey(k, remote)
 	}
+	return
 }
 
 func (node *Node) transferKey(key scale.Key, remote scale.RemoteNode) {
@@ -205,14 +210,7 @@ func (node *Node) bootstrap(n scale.RemoteNode) {
 	var err error
 
 	for i := 0; i < scale.M; i++ {
-		start := fingerMath(node.id[:], i)
-		startKey := keyspace.ByteArrayToKey(start)
-
-		// if keyspace.Equal(n.GetID(), node.id) {
-		// 	p, err = node.FindSuccessor(startKey)
-		// } else {
-		// 	p, err = n.FindSuccessor(startKey)
-		// }
+		startKey := keyspace.ByteArrayToKey(fingerMath(node.id[:], i))
 
 		p, err = node.CallFunction("FindSuccessor", n, startKey)
 
@@ -408,6 +406,7 @@ func (node *Node) Shutdown() {
 	for _, remoteConnection := range node.remoteConnections {
 		remoteConnection.CloseConnection()
 	}
+	node.sugar.Info("shutdown?")
 }
 
 func (node *Node) stabilize() {
@@ -471,7 +470,12 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 		node.fingerTable[0] = remote
 		node.successor = remote
 		node.predecessor = remote
-		node.sugar.Infof("predecessor and successor set to %+v %p", remote, remote)
+		node.sugar.Infof("Predecessor and successor set to %s", remote.GetAddr())
+
+		node.sugar.Infof("Transferring keys to %s", remote.GetAddr())
+		numKeysTransferred := node.TransferKeys(remote.GetID(), remote.GetAddr())
+		node.sugar.Infof("Transferred %d keys", numKeysTransferred)
+
 		node.mutex.Unlock()
 		node.bootstrap(remote)
 
@@ -483,7 +487,12 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 		successor := newRemoteNode(addr)
 		node.fingerTable[0] = successor
 		node.successor = successor
-		node.sugar.Infof("successor set to %+v %p", node.successor, node.successor)
+		node.sugar.Infof("Successor set to %+v %p", node.successor, node.successor)
+
+		node.sugar.Infof("transferring keys to %s", successor.GetAddr())
+		count := node.TransferKeys(successor.GetID(), successor.GetAddr())
+		node.sugar.Info("Transferred %d keys", count)
+
 		node.mutex.Unlock()
 		node.bootstrap(successor)
 	}
@@ -492,7 +501,7 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 		node.mutex.Lock()
 		predecessor := newRemoteNode(addr)
 		node.predecessor = predecessor
-		node.sugar.Infof("predecessor set to %+v %p", node.predecessor, node.predecessor)
+		node.sugar.Infof("Predecessor set to %+v %p", node.predecessor, node.predecessor)
 		node.mutex.Unlock()
 		node.bootstrap(predecessor)
 	}
@@ -554,7 +563,6 @@ func (node *Node) CallFunction(funcName string, remote scale.RemoteNode, params 
 	}
 
 	response = function.Call(in)
-
 	remoteNode := response[0].Interface()
 
 	if response[1].Interface() != nil {
@@ -573,4 +581,18 @@ func functionFactory(value reflect.Value, functionName string, numParams int) (r
 		return reflect.ValueOf(nil), fmt.Errorf("invalid number of arguments. got: %v, want: %v", numParams, numIn)
 	}
 	return function, nil
+}
+
+// SetupCloseHandler creates a listener to notify the node if it receives an
+// interrupt signal from the OS and run the shutdown prodecure.
+func (node *Node) SetupCloseHandler() {
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		node.sugar.Info("Keyboard interrupt, shutting down")
+		node.Shutdown()
+		node.sugar.Info("K bye!")
+		os.Exit(0)
+	}()
 }
