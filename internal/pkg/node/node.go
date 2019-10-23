@@ -600,10 +600,10 @@ func (node *Node) SetupCloseHandler() {
 	}()
 }
 
-func (node *Node) SetSuccessor(id Scale.Key, addr string) error {
+func (node *Node) SetSuccessor(id scale.Key, addr string) error {
 	return nil
 }
 
-func (node *Node) SetPredecessor(id Scale.Key, addr string) error {
+func (node *Node) SetPredecessor(id scale.Key, addr string) error {
 	return nil
 }
