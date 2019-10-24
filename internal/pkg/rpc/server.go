@@ -206,6 +206,7 @@ func (r *RPC) GetNodeMetadata(context.Context, *pb.Empty) (*pb.NodeMetadata, err
 		Addr:        r.node.GetAddr(),
 		Port:        r.node.GetPort(),
 		FingerTable: ft,
+		Keys:        r.node.GetKeys(),
 	}
 
 	predecessor, err := r.node.GetPredecessor()
@@ -279,4 +280,26 @@ func (r *RPC) ServerListen() {
 func (r *RPC) Shutdown() {
 	r.logger.Sync()
 	r.sugar.Sync()
+}
+
+// SetPredecessor sets the predecessor to the node passed in
+func (r *RPC) SetPredecessor(ctx context.Context, in *pb.ShutdownRequest) (*pb.Empty, error) {
+	err := r.node.SetPredecessor(in.EssorAddr, in.ClientAddr)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Empty{}, nil
+}
+
+// SetSuccessor sets the predecessor to the node passed in
+func (r *RPC) SetSuccessor(ctx context.Context, in *pb.ShutdownRequest) (*pb.Empty, error) {
+	err := r.node.SetSuccessor(in.EssorAddr, in.ClientAddr)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Empty{}, nil
 }

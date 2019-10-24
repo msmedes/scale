@@ -10,6 +10,11 @@ message GetRequest { bytes key = 1; }
 message GetResponse { bytes value = 1; }
 message KeyTransferRequest { bytes id = 1; string addr = 2; }
 
+message ShutdownRequest {
+  string essorAddr = 1;
+  string clientAddr = 2;
+}
+
 message SetRequest {
   bytes key = 1;
   bytes value = 2;
@@ -24,6 +29,7 @@ message NodeMetadata {
   string successorAddr = 6;
   repeated bytes fingerTable = 7;
   string port = 8;
+  repeated string keys = 9;
 }
 
 message RemoteNode {
@@ -38,6 +44,8 @@ service Scale {
   rpc GetPredecessor(Empty) returns (RemoteNode) {}
   rpc FindPredecessor(RemoteQuery) returns (RemoteNode) {}
   rpc FindSuccessor(RemoteQuery) returns (RemoteNode) {}
+  rpc SetPredecessor(ShutdownRequest) returns (Empty) {}
+  rpc SetSuccessor(ShutdownRequest) returns (Empty) {}
   rpc Notify(RemoteNode) returns (Success) {}
   rpc GetLocal(GetRequest) returns (GetResponse) {}
   rpc SetLocal(SetRequest) returns (Success) {}

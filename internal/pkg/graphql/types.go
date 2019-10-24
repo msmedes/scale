@@ -12,6 +12,7 @@ type nodeMetadata struct {
 	Predecessor *remoteNodeMetadata `json:",omitempty"`
 	Successor   *remoteNodeMetadata `json:",omitempty"`
 	FingerTable []string            `json:",omitempty"`
+	Keys        []string            `json:",omitempty"`
 }
 
 type metadata struct {

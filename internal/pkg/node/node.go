@@ -1,11 +1,15 @@
 package node
 
 import (
-	"bytes"
 	"errors"
+	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"reflect"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/msmedes/scale/internal/pkg/keyspace"
@@ -15,7 +19,7 @@ import (
 )
 
 // StabilizeInterval how often to execute stabilization in seconds
-const StabilizeInterval = 1
+const StabilizeInterval = 5
 
 // Node main node class
 type Node struct {
@@ -33,6 +37,7 @@ type Node struct {
 	remoteConnections map[scale.Key]*RemoteNode
 	shutdownChannel   chan struct{}
 	mutex             sync.RWMutex
+	functions         map[string]reflect.Value
 }
 
 // NewNode create a new node
@@ -65,6 +70,7 @@ func NewNode(addr string) *Node {
 	sugar := logger.Sugar()
 	node.sugar = sugar
 	node.logger = logger
+	node.SetupCloseHandler()
 
 	return node
 }
@@ -120,20 +126,21 @@ func (node *Node) StabilizationStart() {
 }
 
 // TransferKeys transfer keys to the given node
-func (node *Node) TransferKeys(id scale.Key, addr string) {
+func (node *Node) TransferKeys(id scale.Key, addr string) (count int) {
+	count = 0
 	remote := newRemoteNode(addr)
 
-	if bytes.Compare(id[:], node.id[:]) >= 0 {
+	if keyspace.Equal(id, node.id) {
 		return
 	}
 
 	for _, k := range node.store.Keys() {
-		if bytes.Compare(k[:], id[:]) >= 0 {
-			break
+		if keyspace.GTE(k, id) {
+			node.transferKey(k, remote)
+			count++
 		}
-
-		node.transferKey(k, remote)
 	}
+	return
 }
 
 func (node *Node) transferKey(key scale.Key, remote scale.RemoteNode) {
@@ -171,13 +178,9 @@ func (node *Node) join(remote scale.RemoteNode) {
 	}
 
 	p := s
-	if keyspace.Equal(p.GetID(), node.id) {
-		s, err = node.GetSuccessor()
-	} else {
-		s, err = p.GetSuccessor()
-	}
+	s, err = node.CallFunction("GetSuccessor", p)
 	if err != nil {
-		node.sugar.Fatal("no successor to predecessor found")
+		node.sugar.Error(err)
 	}
 
 	for !keyspace.BetweenRightInclusive(node.id, p.GetID(), s.GetID()) && !keyspace.Equal(p.GetID(), s.GetID()) {
@@ -207,14 +210,9 @@ func (node *Node) bootstrap(n scale.RemoteNode) {
 	var err error
 
 	for i := 0; i < scale.M; i++ {
-		start := fingerMath(node.id[:], i)
-		startKey := keyspace.ByteArrayToKey(start)
+		startKey := keyspace.ByteArrayToKey(fingerMath(node.id[:], i))
 
-		if keyspace.Equal(n.GetID(), node.id) {
-			p, err = node.FindSuccessor(startKey)
-		} else {
-			p, err = n.FindSuccessor(startKey)
-		}
+		p, err = node.CallFunction("FindSuccessor", n, startKey)
 
 		if err != nil {
 			node.sugar.Fatal(err)
@@ -227,11 +225,7 @@ func (node *Node) bootstrap(n scale.RemoteNode) {
 		for keyspace.GT(p.GetID(), startKey) {
 			s = p
 
-			if keyspace.Equal(p.GetID(), node.id) {
-				p, err = node.GetPredecessor()
-			} else {
-				p, err = p.GetPredecessor()
-			}
+			p, err = node.CallFunction("GetPredecessor", p)
 
 			if err != nil {
 				node.sugar.Fatal(err)
@@ -256,9 +250,16 @@ func (node *Node) SetLocal(key scale.Key, value []byte) error {
 
 // Get return a value stored on this node
 func (node *Node) Get(key scale.Key) ([]byte, error) {
+	var (
+		val []byte
+		err error
+	)
 	succ, err := node.FindSuccessor(key)
-	remoteNode := succ
-	val, err := remoteNode.GetLocal(key)
+	if keyspace.Equal(succ.GetID(), node.id) {
+		val, err = node.GetLocal(key)
+	} else {
+		val, err = succ.GetLocal(key)
+	}
 
 	if err != nil {
 		return nil, err
@@ -270,8 +271,12 @@ func (node *Node) Get(key scale.Key) ([]byte, error) {
 // Set set a value in the local store
 func (node *Node) Set(key scale.Key, value []byte) error {
 	succ, err := node.FindSuccessor(key)
-	remoteNode := newRemoteNode(succ.GetAddr())
-	err = remoteNode.SetLocal(key, value)
+	if keyspace.Equal(node.id, succ.GetID()) {
+		err = node.SetLocal(key, value)
+	} else {
+		remoteNode := newRemoteNode(succ.GetAddr())
+		err = remoteNode.SetLocal(key, value)
+	}
 
 	if err != nil {
 		return err
@@ -292,18 +297,10 @@ func (node *Node) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 	successor := node.successor
 
 	if !keyspace.BetweenRightInclusive(key, node.predecessor.GetID(), node.successor.GetID()) {
-		if keyspace.Equal(n1.GetID(), node.id) {
-			n1, err = node.ClosestPrecedingFinger(key)
-		} else {
-			n1, err = n1.ClosestPrecedingFinger(key)
-		}
+		n1, err = node.CallFunction("ClosestPrecedingFinger", n1, key)
 	}
 
-	if keyspace.Equal(n1.GetID(), node.id) {
-		successor, err = node.GetSuccessor()
-	} else {
-		successor, err = n1.GetSuccessor()
-	}
+	successor, err = node.CallFunction("GetSuccessor", n1)
 	if err != nil {
 		return nil, err
 	}
@@ -315,20 +312,17 @@ func (node *Node) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 	}
 
 	for !keyspace.BetweenRightInclusive(key, n1.GetID(), successor.GetID()) && !keyspace.Equal(n1.GetID(), node.id) {
-		if keyspace.Equal(n1.GetID(), node.id) {
-			n1, err = node.ClosestPrecedingFinger(key)
-		} else {
-			n1, err = n1.ClosestPrecedingFinger(key)
-		}
+		// if keyspace.Equal(n1.GetID(), node.id) {
+		// 	n1, err = node.ClosestPrecedingFinger(key)
+		// } else {
+		// 	n1, err = n1.ClosestPrecedingFinger(key)
+		// }
+		n1, err = node.CallFunction("ClosestPrecedingFinger", n1, key)
 		if err != nil {
 			return nil, err
 		}
 
-		if keyspace.Equal(n1.GetID(), node.id) {
-			successor, err = node.GetSuccessor()
-		} else {
-			successor, err = n1.GetSuccessor()
-		}
+		successor, err = node.CallFunction("GetSuccessor", n1)
 
 		if err != nil {
 			return nil, err
@@ -407,22 +401,23 @@ func (node *Node) Shutdown() {
 	close(node.shutdownChannel)
 
 	if !keyspace.Equal(node.id, node.successor.GetID()) {
+		node.TransferKeys(node.predecessor.GetID(), node.successor.GetAddr())
+		node.successor.SetPredecessor(node.predecessor.GetAddr(), node.GetAddr())
+		node.predecessor.SetSuccessor(node.successor.GetAddr(), node.GetAddr())
 	}
 
-	for _, remoteConnection := range node.remoteConnections {
-		remoteConnection.clientConnection.Close()
+	for _, remoteConnection := range remotes.data {
+		node.sugar.Infof("Closing connection to %s", remoteConnection.GetAddr())
+		remoteConnection.CloseConnection()
 	}
+	node.sugar.Info("shutdown?")
 }
 
 func (node *Node) stabilize() {
 	var x scale.RemoteNode
 	var err error
 
-	if keyspace.Equal(node.id, node.predecessor.GetID()) {
-		x, err = node.GetSuccessor()
-	} else {
-		x, err = node.predecessor.GetSuccessor()
-	}
+	x, err = node.CallFunction("GetSuccessor", node.predecessor)
 
 	if err != nil {
 		node.sugar.Fatal(err)
@@ -435,12 +430,7 @@ func (node *Node) stabilize() {
 		node.mutex.Unlock()
 	}
 
-	if keyspace.Equal(node.successor.GetID(), node.id) {
-		x, err = node.GetSuccessor()
-	} else {
-		x, err = node.successor.GetSuccessor()
-	}
-
+	x, err = node.CallFunction("GetSuccessor", node.successor)
 	if err != nil {
 		node.sugar.Error(err)
 	}
@@ -484,7 +474,12 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 		node.fingerTable[0] = remote
 		node.successor = remote
 		node.predecessor = remote
-		node.sugar.Infof("predecessor and successor set to %+v %p", remote, remote)
+		node.sugar.Infof("Predecessor and successor set to %s", remote.GetAddr())
+
+		node.sugar.Infof("Transferring keys to %s", remote.GetAddr())
+		numKeysTransferred := node.TransferKeys(remote.GetID(), remote.GetAddr())
+		node.sugar.Infof("Transferred %d keys", numKeysTransferred)
+
 		node.mutex.Unlock()
 		node.bootstrap(remote)
 
@@ -496,7 +491,12 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 		successor := newRemoteNode(addr)
 		node.fingerTable[0] = successor
 		node.successor = successor
-		node.sugar.Infof("successor set to %+v %p", node.successor, node.successor)
+		node.sugar.Infof("Successor set to %+v %p", node.successor, node.successor)
+
+		node.sugar.Infof("transferring keys to %s", successor.GetAddr())
+		count := node.TransferKeys(successor.GetID(), successor.GetAddr())
+		node.sugar.Info("Transferred %d keys", count)
+
 		node.mutex.Unlock()
 		node.bootstrap(successor)
 	}
@@ -505,7 +505,7 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 		node.mutex.Lock()
 		predecessor := newRemoteNode(addr)
 		node.predecessor = predecessor
-		node.sugar.Infof("predecessor set to %+v %p", node.predecessor, node.predecessor)
+		node.sugar.Infof("Predecessor set to %+v %p", node.predecessor, node.predecessor)
 		node.mutex.Unlock()
 		node.bootstrap(predecessor)
 	}
@@ -527,4 +527,90 @@ func (node *Node) fixNextFinger(next int) int {
 	finger := newRemoteNode(successor.GetAddr())
 	node.fingerTable[next] = finger
 	return next + 1
+}
+
+// GetKeys returns all the keys in the store
+func (node *Node) GetKeys() []string {
+	return node.store.KeysAsString()
+}
+
+// CallFunction is a handy little function to remove all the
+// if keyspace.Equal(node.id, remote.ID) boilerplate
+func (node *Node) CallFunction(funcName string, remote scale.RemoteNode, params ...interface{}) (scale.RemoteNode, error) {
+	var (
+		nodeReflect reflect.Value
+		function    reflect.Value
+		response    []reflect.Value
+		err         error
+	)
+
+	// Call was rejecting the length of the returned []reflect.Value for
+	// functions with no params when these few lines were in their own
+	// function, but it works this way for some reason?
+	in := make([]reflect.Value, len(params))
+	for k, param := range params {
+		in[k] = reflect.ValueOf(param)
+	}
+
+	if keyspace.Equal(node.GetID(), remote.GetID()) {
+		nodeReflect = reflect.ValueOf(node)
+		function, err = functionFactory(nodeReflect, funcName, len(in))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		nodeReflect = reflect.ValueOf(remote)
+		function, err = functionFactory(nodeReflect, funcName, len(in))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	response = function.Call(in)
+	remoteNode := response[0].Interface()
+
+	if response[1].Interface() != nil {
+		responseErr := response[1].Interface().(error)
+		return nil, responseErr
+	}
+
+	return remoteNode.(scale.RemoteNode), nil
+}
+
+// lol what is this java
+func functionFactory(value reflect.Value, functionName string, numParams int) (reflect.Value, error) {
+	function := value.MethodByName(fmt.Sprintf("%s", functionName))
+	numIn := function.Type().NumIn()
+	if numParams != numIn {
+		return reflect.ValueOf(nil), fmt.Errorf("invalid number of arguments. got: %v, want: %v", numParams, numIn)
+	}
+	return function, nil
+}
+
+// SetupCloseHandler creates a listener to notify the node if it receives an
+// interrupt signal from the OS and run the shutdown prodecure.
+func (node *Node) SetupCloseHandler() {
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		node.sugar.Info("Keyboard interrupt, shutting down")
+		node.Shutdown()
+		node.sugar.Info("K bye!")
+		os.Exit(0)
+	}()
+}
+
+// SetSuccessor sets the successor
+func (node *Node) SetSuccessor(succAddr string, clientAddr string) error {
+	node.successor = newRemoteNode(succAddr)
+	remotes.data[clientAddr].CloseConnection()
+	return nil
+}
+
+// SetPredecessor sets the predecessor
+func (node *Node) SetPredecessor(predAddr string, clientAddr string) error {
+	node.predecessor = newRemoteNode(predAddr)
+	remotes.data[clientAddr].CloseConnection()
+	return nil
 }

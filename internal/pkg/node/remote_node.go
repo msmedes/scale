@@ -206,6 +206,26 @@ func (r *RemoteNode) ClosestPrecedingFinger(id scale.Key) (scale.RemoteNode, err
 	return newRemoteNode(res.GetAddr()), nil
 }
 
+// SetPredecessor proxy
+func (r *RemoteNode) SetPredecessor(addr string, clientAddr string) error {
+	_, err := r.RPC.SetPredecessor(context.Background(), &pb.ShutdownRequest{
+		EssorAddr:  addr,
+		ClientAddr: clientAddr,
+	})
+
+	return err
+}
+
+// SetSuccessor proxy
+func (r *RemoteNode) SetSuccessor(addr string, clientAddr string) error {
+	_, err := r.RPC.SetSuccessor(context.Background(), &pb.ShutdownRequest{
+		EssorAddr:  addr,
+		ClientAddr: clientAddr,
+	})
+
+	return err
+}
+
 func clearRemotes() {
 	remotes.mutex.Lock()
 	defer remotes.mutex.Unlock()
