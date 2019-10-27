@@ -128,6 +128,7 @@ func (r *RemoteNode) CloseConnection() error {
 	if err != nil {
 		return err
 	}
+	delete(remotes.data, r.GetAddr()) // I guess this can be handled here?
 	return nil
 }
 
