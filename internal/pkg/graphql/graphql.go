@@ -83,7 +83,6 @@ func (g *GraphQL) execute(query string) *gql.Result {
 }
 
 func (g *GraphQL) buildSchema() {
-	g.sugar.Info("buildSchema")
 	remoteNodeMetadataType := gql.NewObject(
 		gql.ObjectConfig{
 			Name: "RemoteNodeMetadata",

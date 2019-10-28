@@ -104,7 +104,7 @@ func (node *Node) GetFingerTableIDs() []scale.Key {
 // StabilizationStart run a process that periodically makes sure the finger table
 // is up to date and accurate
 func (node *Node) StabilizationStart() {
-	next := 1
+	next := 0
 	ticker := time.NewTicker(StabilizeInterval * time.Second)
 
 	for {
@@ -114,7 +114,7 @@ func (node *Node) StabilizationStart() {
 			node.checkPredecessor()
 			next = node.fixNextFinger(next)
 			if next == scale.M {
-				next = 1
+				next = 0
 			}
 		case <-node.shutdownChannel:
 			ticker.Stop()
@@ -199,10 +199,7 @@ func (node *Node) join(remote scale.RemoteNode) {
 	p.Notify(node)
 	s.Notify(node)
 
-	node.mutex.RLock()
 	node.bootstrap(s)
-	node.fingerTable[0] = s
-	node.mutex.RUnlock()
 
 	node.sugar.Info("joined network")
 }
@@ -211,7 +208,7 @@ func (node *Node) bootstrap(n scale.RemoteNode) {
 	var p scale.RemoteNode
 	var err error
 
-	for i := 1; i < scale.M; i++ {
+	for i := 0; i < scale.M; i++ {
 		startKey := keyspace.ByteArrayToKey(fingerMath(node.id[:], i))
 
 		p, err = node.CallFunction("FindSuccessor", n, startKey)
