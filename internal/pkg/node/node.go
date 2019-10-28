@@ -50,7 +50,6 @@ func NewNode(addr string) *Node {
 		store:           store.NewMemoryStore(),
 		shutdownChannel: make(chan struct{}),
 	}
-
 	node.fingerTable = newFingerTable(node.toRemoteNode())
 	node.successor = node.toRemoteNode()
 	node.predecessor = node.toRemoteNode()
@@ -89,13 +88,14 @@ func (node *Node) GetPort() string {
 }
 
 // GetFingerTableIDs return an array of IDs in the table
-func (node *Node) GetFingerTableIDs() []scale.Key {
+func (node *Node) GetFingerTableIDs() [][]byte {
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
-	var keys []scale.Key
+	var keys [][]byte
 
 	for _, k := range node.fingerTable {
-		keys = append(keys, k.GetID())
+		id := k.GetID()
+		keys = append(keys, id[:])
 	}
 
 	return keys
@@ -104,7 +104,7 @@ func (node *Node) GetFingerTableIDs() []scale.Key {
 // StabilizationStart run a process that periodically makes sure the finger table
 // is up to date and accurate
 func (node *Node) StabilizationStart() {
-	next := 0
+	next := 1
 	ticker := time.NewTicker(StabilizeInterval * time.Second)
 
 	for {
@@ -112,9 +112,9 @@ func (node *Node) StabilizationStart() {
 		case <-ticker.C:
 			node.stabilize()
 			node.checkPredecessor()
-			node.fixNextFinger(next)
+			next = node.fixNextFinger(next)
 			if next == scale.M {
-				next = 0
+				next = 1
 			}
 		case <-node.shutdownChannel:
 			ticker.Stop()
@@ -195,10 +195,14 @@ func (node *Node) join(remote scale.RemoteNode) {
 	node.successor = s
 	node.predecessor = p
 
+
 	p.Notify(node)
 	s.Notify(node)
 
+	node.mutex.RLock()
 	node.bootstrap(s)
+	node.fingerTable[0] = s
+	node.mutex.RUnlock()
 
 	node.sugar.Info("joined network")
 }
@@ -207,7 +211,7 @@ func (node *Node) bootstrap(n scale.RemoteNode) {
 	var p scale.RemoteNode
 	var err error
 
-	for i := 0; i < scale.M; i++ {
+	for i := 1; i < scale.M; i++ {
 		startKey := keyspace.ByteArrayToKey(fingerMath(node.id[:], i))
 
 		p, err = node.CallFunction("FindSuccessor", n, startKey)
@@ -462,7 +466,6 @@ func (node *Node) checkPredecessor() {
 	if err != nil {
 		node.predecessor = nil
 		predecessor.CloseConnection()
-		delete(remotes.data, predecessor.GetAddr())
 	}
 }
 

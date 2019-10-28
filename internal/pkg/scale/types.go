@@ -37,7 +37,7 @@ type Node interface {
 	baseNode
 
 	Get(Key) ([]byte, error)
-	GetFingerTableIDs() []Key
+	GetFingerTableIDs() [][]byte
 	GetPort() string
 	GetKeys() []string
 	Notify(Key, string) error

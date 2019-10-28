@@ -30,17 +30,16 @@ type GraphQL struct {
 func NewGraphQL(addr string, r *rpc.RPC) *GraphQL {
 	obj := &GraphQL{addr: addr, rpc: r}
 
-	obj.buildSchema()
-
 	logger, err := zap.NewDevelopment()
+	sugar := logger.Sugar()
+	obj.sugar = sugar
+	obj.logger = logger
+
+	obj.buildSchema()
 
 	if err != nil {
 		log.Fatalf("failed to init logger: %v", err)
 	}
-
-	sugar := logger.Sugar()
-	obj.sugar = sugar
-	obj.logger = logger
 
 	return obj
 }
@@ -84,6 +83,7 @@ func (g *GraphQL) execute(query string) *gql.Result {
 }
 
 func (g *GraphQL) buildSchema() {
+	g.sugar.Info("buildSchema")
 	remoteNodeMetadataType := gql.NewObject(
 		gql.ObjectConfig{
 			Name: "RemoteNodeMetadata",

@@ -195,11 +195,7 @@ func (r *RPC) Set(ctx context.Context, in *pb.SetRequest) (*pb.Success, error) {
 func (r *RPC) GetNodeMetadata(context.Context, *pb.Empty) (*pb.NodeMetadata, error) {
 	id := r.node.GetID()
 
-	var ft [][]byte
-
-	for _, k := range r.node.GetFingerTableIDs() {
-		ft = append(ft, k[:])
-	}
+	ft := r.node.GetFingerTableIDs() 
 
 	meta := &pb.NodeMetadata{
 		Id:          id[:],
