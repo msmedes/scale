@@ -88,15 +88,15 @@ func (node *Node) GetPort() string {
 }
 
 // GetFingerTableIDs return an array of IDs in the table
-func (node *Node) GetFingerTableIDs() [][]byte {
+func (node *Node) GetFingerTableIDs() []scale.Key {
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
-	var keys [][]byte
+	var keys []scale.Key
 
-	for _, k := range node.fingerTable {
-		id := k.GetID()
-		keys = append(keys, id[:])
+	for _, v := range node.fingerTable {
+		keys = append(keys, v.GetID())
 	}
+	node.sugar.Infof("%+v", keys)
 
 	return keys
 }
