@@ -16,7 +16,7 @@ func NewClient(addr string) (pb.ScaleClient, *grpc.ClientConn) {
 		grpc.WithInsecure(),
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:                10 * time.Second,
-			Timeout:             20 * time.Second,
+			Timeout:             10 * time.Second,
 			PermitWithoutStream: true,
 		}),
 	}

@@ -197,9 +197,13 @@ func (r *RPC) GetNodeMetadata(context.Context, *pb.Empty) (*pb.NodeMetadata, err
 
 	var ft [][]byte
 
+	// Idk man, this is what it wants
 	for _, k := range r.node.GetFingerTableIDs() {
-		ft = append(ft, k[:])
+		keyID := make([]byte, len(k))
+		copy(keyID, k[:])
+		ft = append(ft, keyID)
 	}
+
 
 	meta := &pb.NodeMetadata{
 		Id:          id[:],

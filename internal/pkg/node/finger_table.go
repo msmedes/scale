@@ -12,13 +12,17 @@ import (
 type table []scale.RemoteNode
 
 func newFingerTable(node scale.RemoteNode) table {
-	ft := make([]scale.RemoteNode, scale.M)
+	ft := newEmptyFingerTable()
 
 	for i := range ft {
 		ft[i] = node
 	}
 
 	return ft
+}
+
+func newEmptyFingerTable() table {
+	return make([]scale.RemoteNode, scale.M)
 }
 
 // FingerMath fingermath
