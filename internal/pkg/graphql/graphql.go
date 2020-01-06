@@ -30,16 +30,17 @@ type GraphQL struct {
 func NewGraphQL(addr string, r *rpc.RPC) *GraphQL {
 	obj := &GraphQL{addr: addr, rpc: r}
 
-	logger, err := zap.NewDevelopment()
-	sugar := logger.Sugar()
-	obj.sugar = sugar
-	obj.logger = logger
-
 	obj.buildSchema()
+
+	logger, err := zap.NewDevelopment()
 
 	if err != nil {
 		log.Fatalf("failed to init logger: %v", err)
 	}
+
+	sugar := logger.Sugar()
+	obj.sugar = sugar
+	obj.logger = logger
 
 	return obj
 }

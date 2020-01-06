@@ -204,7 +204,6 @@ func (r *RPC) GetNodeMetadata(context.Context, *pb.Empty) (*pb.NodeMetadata, err
 		ft = append(ft, keyID)
 	}
 
-
 	meta := &pb.NodeMetadata{
 		Id:          id[:],
 		Addr:        r.node.GetAddr(),
@@ -262,6 +261,7 @@ func (r *RPC) ServerListen() {
 		}),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			grpc_zap.UnaryServerInterceptor(r.logger),
+			serverInterceptor,
 		)),
 	}
 

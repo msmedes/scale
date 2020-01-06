@@ -17,3 +17,6 @@ vendor/
 .DS_Store
 
 .vscode/
+
+coverage.html
+*.out

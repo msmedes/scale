@@ -20,6 +20,7 @@ brew cask install bloomrpc
 
 - `make` - run linting and tests
 - `make serve` - start grpc server
+- `PORT=<port number> JOIN=<node to join ip> WEB=<port number> make serve`
 
 Internode communication is on port 3000 by default. GraphQL API is on port 8000 by default.
 Useful GraphQL queries:

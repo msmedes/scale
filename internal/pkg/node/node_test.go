@@ -278,5 +278,4 @@ func TestFindPredecessor(t *testing.T) {
 			t.Errorf("expected predecessor to be % x, got % x", n1.GetID(), p.GetID())
 		}
 	})
-
 }

@@ -9,7 +9,6 @@ const M = 32
 type Key = [M / 8]byte
 
 type baseNode interface {
-	CloseConnectionOnShutdown(string) error
 	ClosestPrecedingFinger(Key) (RemoteNode, error)
 	FindPredecessor(Key) (RemoteNode, error)
 	FindSuccessor(Key) (RemoteNode, error)

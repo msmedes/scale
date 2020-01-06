@@ -87,3 +87,24 @@ func TestBetweenRightInclusive(t *testing.T) {
 		}
 	}
 }
+
+func TestEqual(t *testing.T) {
+	tests := []struct {
+		a   string
+		b   string
+		exp bool
+	}{
+		{a: "100", b: "100", exp: true},
+		{a: "this is a long string on purpose", b: "this is a long string on purpose", exp: true},
+		{a: "this is a long string", b: "this is a short string", exp: false},
+		{a: "", b: "", exp: true},
+		{a: " ", b: "", exp: false},
+	}
+	for _, test := range tests {
+		want, got := test.exp, Equal(GenerateKey(test.a), GenerateKey(test.b))
+		if got != want {
+			t.Fatalf("expected %t for Equal(%s, %s), got %t",
+				want, test.a, test.b, got)
+		}
+	}
+}

@@ -96,7 +96,6 @@ func (node *Node) GetFingerTableIDs() []scale.Key {
 	for _, v := range node.fingerTable {
 		keys = append(keys, v.GetID())
 	}
-	node.sugar.Infof("%+v", keys)
 
 	return keys
 }
@@ -113,9 +112,6 @@ func (node *Node) StabilizationStart() {
 			node.stabilize()
 			node.checkPredecessor()
 			next = node.fixNextFinger(next)
-			if next == scale.M {
-				next = 0
-			}
 		case <-node.shutdownChannel:
 			ticker.Stop()
 			return
@@ -166,6 +162,9 @@ func (node *Node) JoinAddr(addr string) {
 }
 
 func (node *Node) join(remote scale.RemoteNode) {
+	node.mutex.RLock()
+	defer node.mutex.RUnlock()
+
 	node.sugar.Infof("joining network via node at %s", remote.GetAddr())
 	s, err := remote.FindPredecessor(node.id)
 
@@ -194,7 +193,6 @@ func (node *Node) join(remote scale.RemoteNode) {
 
 	node.successor = s
 	node.predecessor = p
-
 
 	p.Notify(node)
 	s.Notify(node)
@@ -357,6 +355,7 @@ func (node *Node) ClosestPrecedingFinger(id scale.Key) (scale.RemoteNode, error)
 			return finger, nil
 		}
 	}
+
 	return node.toRemoteNode(), nil
 }
 
@@ -410,7 +409,6 @@ func (node *Node) Shutdown() {
 
 	for _, remoteConnection := range remotes.data {
 		node.sugar.Infof("Closing connection to %s", remoteConnection.GetAddr())
-		remoteConnection.CloseConnectionOnShutdown(node.addr)
 		remoteConnection.CloseConnection()
 	}
 }
@@ -492,11 +490,11 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 		successor := newRemoteNode(addr)
 		node.fingerTable[0] = successor
 		node.successor = successor
-		node.sugar.Infof("Successor set to %+v %p", node.successor, node.successor)
+		node.sugar.Infof("Successor set to %v %p", node.successor.GetID(), node.successor)
 
 		node.sugar.Infof("transferring keys to %s", successor.GetAddr())
 		count := node.TransferKeys(successor.GetID(), successor.GetAddr())
-		node.sugar.Info("Transferred %v keys", count)
+		node.sugar.Infof("Transferred %v keys", count)
 
 		node.mutex.Unlock()
 		node.bootstrap(successor)
@@ -522,6 +520,10 @@ func (node *Node) toRemoteNode() scale.RemoteNode {
 func (node *Node) fixNextFinger(next int) int {
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
+
+	if next == scale.M {
+		next = 0
+	}
 
 	nextHash := fingerMath(node.id[:], next)
 	successor, _ := node.FindSuccessor(keyspace.ByteArrayToKey(nextHash))
@@ -606,6 +608,7 @@ func (node *Node) SetSuccessor(succAddr string, clientAddr string) error {
 	node.successor = newRemoteNode(succAddr)
 	remotes.data[clientAddr].CloseConnection()
 	node.fingerTable[0] = node.successor
+	node.bootstrap(node.successor)
 	return nil
 }
 
@@ -615,14 +618,5 @@ func (node *Node) SetPredecessor(predAddr string, clientAddr string) error {
 	defer node.mutex.RUnlock()
 	node.predecessor = newRemoteNode(predAddr)
 	remotes.data[clientAddr].CloseConnection()
-	return nil
-}
-
-// CloseConnectionOnShutdown shuts down the connection to the node that is shutting down
-func (node *Node) CloseConnectionOnShutdown(addr string) error {
-	// shut down the connection
-	// remove from remotes
-	// actually close connection
-	// go through finger table and fix at each index with ID?
 	return nil
 }
