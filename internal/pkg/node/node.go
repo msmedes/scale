@@ -1,6 +1,7 @@
 package node
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -11,6 +12,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"google.golang.org/grpc/metadata"
 
 	"github.com/msmedes/scale/internal/pkg/keyspace"
 	"github.com/msmedes/scale/internal/pkg/scale"
@@ -36,7 +39,6 @@ type Node struct {
 	sugar           *zap.SugaredLogger
 	shutdownChannel chan struct{}
 	mutex           sync.RWMutex
-	functions       map[string]reflect.Value
 }
 
 // NewNode create a new node
@@ -165,8 +167,10 @@ func (node *Node) join(remote scale.RemoteNode) {
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
 
+	ctx := context.Background()
+
 	node.sugar.Infof("joining network via node at %s", remote.GetAddr())
-	s, err := remote.FindPredecessor(node.id)
+	s, err := remote.FindPredecessor(ctx, node.id)
 
 	if err != nil {
 		node.sugar.Fatal(err)
@@ -175,14 +179,14 @@ func (node *Node) join(remote scale.RemoteNode) {
 	}
 
 	p := s
-	s, err = node.CallFunction("GetSuccessor", p)
+	s, err = node.CallFunction(ctx, "GetSuccessor", p)
 	if err != nil {
 		node.sugar.Error(err)
 	}
 
 	for !keyspace.BetweenRightInclusive(node.id, p.GetID(), s.GetID()) && !keyspace.Equal(p.GetID(), s.GetID()) {
 		p = s
-		successor, err := p.GetSuccessor()
+		successor, err := p.GetSuccessor(ctx)
 
 		if err != nil {
 			node.sugar.Fatal(err)
@@ -205,11 +209,11 @@ func (node *Node) join(remote scale.RemoteNode) {
 func (node *Node) bootstrap(n scale.RemoteNode) {
 	var p scale.RemoteNode
 	var err error
-
+	ctx := context.Background()
 	for i := 0; i < scale.M; i++ {
 		startKey := keyspace.ByteArrayToKey(fingerMath(node.id[:], i))
 
-		p, err = node.CallFunction("FindSuccessor", n, startKey)
+		p, err = node.CallFunction(ctx, "FindSuccessor", n, startKey)
 
 		if err != nil {
 			node.sugar.Fatal(err)
@@ -222,7 +226,7 @@ func (node *Node) bootstrap(n scale.RemoteNode) {
 		for keyspace.GT(p.GetID(), startKey) {
 			s = p
 
-			p, err = node.CallFunction("GetPredecessor", p)
+			p, err = node.CallFunction(ctx, "GetPredecessor", p)
 
 			if err != nil {
 				node.sugar.Fatal(err)
@@ -246,12 +250,12 @@ func (node *Node) SetLocal(key scale.Key, value []byte) error {
 }
 
 // Get return a value stored on this node
-func (node *Node) Get(key scale.Key) ([]byte, error) {
+func (node *Node) Get(ctx context.Context, key scale.Key) ([]byte, error) {
 	var (
 		val []byte
 		err error
 	)
-	succ, err := node.FindSuccessor(key)
+	succ, err := node.FindSuccessor(ctx, key)
 	if keyspace.Equal(succ.GetID(), node.id) {
 		val, err = node.GetLocal(key)
 	} else {
@@ -266,8 +270,8 @@ func (node *Node) Get(key scale.Key) ([]byte, error) {
 }
 
 // Set set a value in the local store
-func (node *Node) Set(key scale.Key, value []byte) error {
-	succ, err := node.FindSuccessor(key)
+func (node *Node) Set(ctx context.Context, key scale.Key, value []byte) error {
+	succ, err := node.FindSuccessor(ctx, key)
 	if keyspace.Equal(node.id, succ.GetID()) {
 		err = node.SetLocal(key, value)
 	} else {
@@ -283,7 +287,7 @@ func (node *Node) Set(key scale.Key, value []byte) error {
 }
 
 //FindPredecessor finds the predecessor to the id
-func (node *Node) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
+func (node *Node) FindPredecessor(ctx context.Context, key scale.Key) (scale.RemoteNode, error) {
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
 
@@ -294,10 +298,10 @@ func (node *Node) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 	successor := node.successor
 
 	if !keyspace.BetweenRightInclusive(key, node.predecessor.GetID(), node.successor.GetID()) {
-		n1, err = node.CallFunction("ClosestPrecedingFinger", n1, key)
+		n1, err = node.CallFunction(ctx, "ClosestPrecedingFinger", n1, key)
 	}
 
-	successor, err = node.CallFunction("GetSuccessor", n1)
+	successor, err = node.CallFunction(ctx, "GetSuccessor", n1)
 	if err != nil {
 		return nil, err
 	}
@@ -309,12 +313,12 @@ func (node *Node) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 	}
 
 	for !keyspace.BetweenRightInclusive(key, n1.GetID(), successor.GetID()) && !keyspace.Equal(n1.GetID(), node.id) {
-		n1, err = node.CallFunction("ClosestPrecedingFinger", n1, key)
+		n1, err = node.CallFunction(ctx, "ClosestPrecedingFinger", n1, key)
 		if err != nil {
 			return nil, err
 		}
 
-		successor, err = node.CallFunction("GetSuccessor", n1)
+		successor, err = node.CallFunction(ctx, "GetSuccessor", n1)
 
 		if err != nil {
 			return nil, err
@@ -325,8 +329,8 @@ func (node *Node) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 }
 
 // FindSuccessor returns the successor for this node
-func (node *Node) FindSuccessor(key scale.Key) (scale.RemoteNode, error) {
-	predecessor, err := node.FindPredecessor(key)
+func (node *Node) FindSuccessor(ctx context.Context, key scale.Key) (scale.RemoteNode, error) {
+	predecessor, err := node.FindPredecessor(ctx, key)
 
 	if err != nil {
 		node.sugar.Fatal(err)
@@ -334,7 +338,7 @@ func (node *Node) FindSuccessor(key scale.Key) (scale.RemoteNode, error) {
 		return node.successor, nil
 	}
 
-	successor, err := predecessor.GetSuccessor()
+	successor, err := predecessor.GetSuccessor(ctx)
 
 	if err != nil {
 		node.sugar.Fatal(err)
@@ -344,7 +348,7 @@ func (node *Node) FindSuccessor(key scale.Key) (scale.RemoteNode, error) {
 }
 
 // ClosestPrecedingFinger returns the closest preceding finger to the id
-func (node *Node) ClosestPrecedingFinger(id scale.Key) (scale.RemoteNode, error) {
+func (node *Node) ClosestPrecedingFinger(ctx context.Context, id scale.Key) (scale.RemoteNode, error) {
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
 
@@ -360,7 +364,7 @@ func (node *Node) ClosestPrecedingFinger(id scale.Key) (scale.RemoteNode, error)
 }
 
 // GetPredecessor returns the node's predecessor
-func (node *Node) GetPredecessor() (scale.RemoteNode, error) {
+func (node *Node) GetPredecessor(ctx context.Context) (scale.RemoteNode, error) {
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
 
@@ -372,7 +376,7 @@ func (node *Node) GetPredecessor() (scale.RemoteNode, error) {
 }
 
 // GetSuccessor retunrs the node's successor
-func (node *Node) GetSuccessor() (scale.RemoteNode, error) {
+func (node *Node) GetSuccessor(ctx context.Context) (scale.RemoteNode, error) {
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
 
@@ -417,7 +421,8 @@ func (node *Node) stabilize() {
 	var x scale.RemoteNode
 	var err error
 
-	x, err = node.CallFunction("GetSuccessor", node.predecessor)
+	ctx := context.Background()
+	x, err = node.CallFunction(ctx, "GetSuccessor", node.predecessor)
 
 	if err != nil {
 		node.sugar.Fatal(err)
@@ -430,7 +435,7 @@ func (node *Node) stabilize() {
 		node.mutex.Unlock()
 	}
 
-	x, err = node.CallFunction("GetSuccessor", node.successor)
+	x, err = node.CallFunction(ctx, "GetSuccessor", node.successor)
 	if err != nil {
 		node.sugar.Error(err)
 	}
@@ -521,12 +526,14 @@ func (node *Node) fixNextFinger(next int) int {
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
 
+	ctx := context.Background()
+
 	if next == scale.M {
 		next = 0
 	}
 
 	nextHash := fingerMath(node.id[:], next)
-	successor, _ := node.FindSuccessor(keyspace.ByteArrayToKey(nextHash))
+	successor, _ := node.FindSuccessor(ctx, keyspace.ByteArrayToKey(nextHash))
 	finger := newRemoteNode(successor.GetAddr())
 	node.fingerTable[next] = finger
 	return next + 1
@@ -539,8 +546,9 @@ func (node *Node) GetKeys() []string {
 
 // CallFunction is a handy little function to remove all the
 // if keyspace.Equal(node.id, remote.ID) boilerplate
-func (node *Node) CallFunction(funcName string, remote scale.RemoteNode, params ...interface{}) (scale.RemoteNode, error) {
+func (node *Node) CallFunction(ctx context.Context, funcName string, remote scale.RemoteNode, params ...interface{}) (scale.RemoteNode, error) {
 	var (
+		in          []reflect.Value
 		nodeReflect reflect.Value
 		function    reflect.Value
 		response    []reflect.Value
@@ -550,9 +558,14 @@ func (node *Node) CallFunction(funcName string, remote scale.RemoteNode, params 
 	// Call was rejecting the length of the returned []reflect.Value for
 	// functions with no params when these few lines were in their own
 	// function, but it works this way for some reason?
-	in := make([]reflect.Value, len(params))
-	for k, param := range params {
-		in[k] = reflect.ValueOf(param)
+	if len(params) == 0 {
+		in = []reflect.Value{reflect.ValueOf(ctx)}
+	} else {
+		in = make([]reflect.Value, len(params))
+		for k, param := range params {
+			in[k] = reflect.ValueOf(param)
+		}
+		in = prependContext(ctx, in)
 	}
 
 	if keyspace.Equal(node.GetID(), remote.GetID()) {
@@ -619,4 +632,29 @@ func (node *Node) SetPredecessor(predAddr string, clientAddr string) error {
 	node.predecessor = newRemoteNode(predAddr)
 	remotes.data[clientAddr].CloseConnection()
 	return nil
+}
+
+// AppendTrace appends the node address to the outgoing context
+// Or at least that's what it should do.
+func (node *Node) AppendTrace(ctx context.Context) context.Context {
+	addr := node.GetAddr()
+	md, _ := metadata.FromOutgoingContext(ctx)
+
+	trace, ok := md["trace"]
+	if !ok {
+		ctx = metadata.AppendToOutgoingContext(ctx, "trace", addr)
+	} else {
+		if trace[len(trace)-1] != node.GetAddr() {
+			ctx = metadata.AppendToOutgoingContext(ctx, "trace", addr)
+		}
+	}
+	return ctx
+}
+
+// don't @ me
+func prependContext(ctx context.Context, in []reflect.Value) []reflect.Value {
+	in = append(in, reflect.ValueOf(0))
+	copy(in[1:], in)
+	in[0] = reflect.ValueOf(ctx)
+	return in
 }

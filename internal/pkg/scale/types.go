@@ -1,5 +1,7 @@
 package scale
 
+import "context"
+
 // Canonical types for the implementation
 
 // M bit keyspace
@@ -9,14 +11,14 @@ const M = 32
 type Key = [M / 8]byte
 
 type baseNode interface {
-	ClosestPrecedingFinger(Key) (RemoteNode, error)
-	FindPredecessor(Key) (RemoteNode, error)
-	FindSuccessor(Key) (RemoteNode, error)
+	ClosestPrecedingFinger(context.Context, Key) (RemoteNode, error)
+	FindPredecessor(context.Context, Key) (RemoteNode, error)
+	FindSuccessor(context.Context, Key) (RemoteNode, error)
 	GetAddr() string
 	GetID() Key
 	GetLocal(Key) ([]byte, error)
-	GetPredecessor() (RemoteNode, error)
-	GetSuccessor() (RemoteNode, error)
+	GetPredecessor(context.Context) (RemoteNode, error)
+	GetSuccessor(context.Context) (RemoteNode, error)
 	SetLocal(Key, []byte) error
 	SetPredecessor(string, string) error
 	SetSuccessor(string, string) error
@@ -35,12 +37,13 @@ type RemoteNode interface {
 type Node interface {
 	baseNode
 
-	Get(Key) ([]byte, error)
+	AppendTrace(context.Context) context.Context
+	Get(context.Context, Key) ([]byte, error)
 	GetFingerTableIDs() []Key
 	GetPort() string
 	GetKeys() []string
 	Notify(Key, string) error
-	Set(Key, []byte) error
+	Set(context.Context, Key, []byte) error
 	TransferKeys(Key, string) int
 }
 

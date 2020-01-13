@@ -38,7 +38,7 @@ func ServerListen() {
 
 	go n.StabilizationStart()
 
-	select {}
+	select {} // the heck is this
 }
 
 func getEnv(key string, defaultVal string) string {

@@ -69,9 +69,9 @@ func (r *RemoteNode) GetAddr() string {
 }
 
 // FindPredecessor proxy for RPC call
-func (r *RemoteNode) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
+func (r *RemoteNode) FindPredecessor(ctx context.Context, key scale.Key) (scale.RemoteNode, error) {
 	predecessor, err := r.RPC.FindPredecessor(
-		context.Background(),
+		ctx,
 		&pb.RemoteQuery{Id: key[:]},
 	)
 
@@ -83,8 +83,8 @@ func (r *RemoteNode) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 }
 
 // FindSuccessor proxy
-func (r *RemoteNode) FindSuccessor(key scale.Key) (scale.RemoteNode, error) {
-	p, err := r.RPC.FindSuccessor(context.Background(), &pb.RemoteQuery{Id: key[:]})
+func (r *RemoteNode) FindSuccessor(ctx context.Context, key scale.Key) (scale.RemoteNode, error) {
+	p, err := r.RPC.FindSuccessor(ctx, &pb.RemoteQuery{Id: key[:]})
 
 	if err != nil {
 		return nil, err
@@ -144,8 +144,8 @@ func (r *RemoteNode) Notify(node scale.Node) error {
 }
 
 //GetSuccessor proxy
-func (r *RemoteNode) GetSuccessor() (scale.RemoteNode, error) {
-	successor, err := r.RPC.GetSuccessor(context.Background(), &pb.Empty{})
+func (r *RemoteNode) GetSuccessor(ctx context.Context) (scale.RemoteNode, error) {
+	successor, err := r.RPC.GetSuccessor(ctx, &pb.Empty{})
 
 	if err != nil {
 		return nil, err
@@ -155,8 +155,8 @@ func (r *RemoteNode) GetSuccessor() (scale.RemoteNode, error) {
 }
 
 //GetPredecessor proxy
-func (r *RemoteNode) GetPredecessor() (scale.RemoteNode, error) {
-	predecessor, err := r.RPC.GetPredecessor(context.Background(), &pb.Empty{})
+func (r *RemoteNode) GetPredecessor(ctx context.Context) (scale.RemoteNode, error) {
+	predecessor, err := r.RPC.GetPredecessor(ctx, &pb.Empty{})
 
 	if err != nil {
 		return nil, err
@@ -197,7 +197,7 @@ func (r *RemoteNode) SetLocal(key scale.Key, val []byte) error {
 }
 
 //ClosestPrecedingFinger proxy
-func (r *RemoteNode) ClosestPrecedingFinger(id scale.Key) (scale.RemoteNode, error) {
+func (r *RemoteNode) ClosestPrecedingFinger(ctx context.Context, id scale.Key) (scale.RemoteNode, error) {
 	res, err := r.RPC.ClosestPrecedingFinger(context.Background(), &pb.RemoteQuery{Id: id[:]})
 
 	if err != nil {

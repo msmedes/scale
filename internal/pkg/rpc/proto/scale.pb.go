@@ -336,10 +336,6 @@ func (m *ShutdownRequest) GetClientAddr() string {
 	return ""
 }
 
-// message SetResponse {
-//   Success success = 1;
-//   Trace trace = 2;
-// }
 type SetRequest struct {
 	Key                  []byte   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Value                []byte   `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`

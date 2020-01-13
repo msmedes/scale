@@ -4,6 +4,8 @@ import (
 	"log"
 	"time"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+
 	"google.golang.org/grpc/keepalive"
 
 	pb "github.com/msmedes/scale/internal/pkg/rpc/proto"
@@ -19,6 +21,7 @@ func NewClient(addr string) (pb.ScaleClient, *grpc.ClientConn) {
 			Timeout:             10 * time.Second,
 			PermitWithoutStream: true,
 		}),
+		grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(TraceClientInterceptor())),
 	}
 
 	conn, err := grpc.Dial(addr, opts...)
@@ -28,10 +31,6 @@ func NewClient(addr string) (pb.ScaleClient, *grpc.ClientConn) {
 	}
 
 	client := pb.NewScaleClient(conn)
-
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	return client, conn
 }

@@ -1,8 +1,11 @@
 package node
 
 import (
+	"context"
 	"log"
 	"testing"
+
+	"google.golang.org/grpc/metadata"
 
 	"github.com/google/uuid"
 	"github.com/msmedes/scale/internal/pkg/keyspace"
@@ -12,6 +15,8 @@ const (
 	Addr1 = "0.0.0.0:3000"
 	Addr2 = "0.0.0.0:3001"
 )
+
+var ctx context.Context = context.Background()
 
 func newAddr(t *testing.T) string {
 	id, err := uuid.NewRandom()
@@ -28,7 +33,7 @@ func TestNewNode(t *testing.T) {
 	n := NewNode(Addr1)
 
 	t.Run("sets successor to itself", func(t *testing.T) {
-		s, err := n.GetSuccessor()
+		s, err := n.GetSuccessor(ctx)
 
 		if err != nil {
 			t.Error(err)
@@ -40,7 +45,7 @@ func TestNewNode(t *testing.T) {
 	})
 
 	t.Run("sets predecessor to itself", func(t *testing.T) {
-		p, err := n.GetPredecessor()
+		p, err := n.GetPredecessor(ctx)
 
 		if err != nil {
 			t.Error(err)
@@ -68,7 +73,7 @@ func TestCheckPredecessor(t *testing.T) {
 
 	t.Run("does nothing when predecessor is itself", func(t *testing.T) {
 		n.checkPredecessor()
-		p, err := n.GetPredecessor()
+		p, err := n.GetPredecessor(ctx)
 
 		if err != nil {
 			t.Error(err)
@@ -82,7 +87,7 @@ func TestCheckPredecessor(t *testing.T) {
 	t.Run("removes predecessor if there is an error pinging it", func(t *testing.T) {
 		n.predecessor = newRemoteNode(Addr2)
 		n.checkPredecessor()
-		p, err := n.GetPredecessor()
+		p, err := n.GetPredecessor(ctx)
 
 		if err != nil {
 			t.Error(err)
@@ -144,7 +149,7 @@ func TestClosestPrecedingFinger(t *testing.T) {
 
 	t.Run("ft is all one value < key", func(t *testing.T) {
 		key := [4]byte{2}
-		closest, err := n.ClosestPrecedingFinger(key)
+		closest, err := n.ClosestPrecedingFinger(ctx, key)
 
 		if err != nil {
 			t.Error(err)
@@ -157,7 +162,7 @@ func TestClosestPrecedingFinger(t *testing.T) {
 
 	t.Run("ft is all one value > key", func(t *testing.T) {
 		key := [4]byte{0}
-		closest, err := n.ClosestPrecedingFinger(key)
+		closest, err := n.ClosestPrecedingFinger(ctx, key)
 
 		if err != nil {
 			t.Error(err)
@@ -170,7 +175,7 @@ func TestClosestPrecedingFinger(t *testing.T) {
 
 	t.Run("ft is all one value == key", func(t *testing.T) {
 		key := [4]byte{1}
-		closest, err := n.ClosestPrecedingFinger(key)
+		closest, err := n.ClosestPrecedingFinger(ctx, key)
 
 		if err != nil {
 			t.Error(err)
@@ -188,7 +193,7 @@ func TestClosestPrecedingFinger(t *testing.T) {
 
 		key := [4]byte{5}
 
-		closest, err := n.ClosestPrecedingFinger(key)
+		closest, err := n.ClosestPrecedingFinger(ctx, key)
 
 		if err != nil {
 			t.Error(err)
@@ -209,7 +214,7 @@ func TestFindPredecessor(t *testing.T) {
 		key := [4]byte{0}
 		nRemote := n.toRemoteNode()
 		n.fingerTable = newFingerTable(nRemote)
-		pred, err := n.FindPredecessor(key)
+		pred, err := n.FindPredecessor(ctx, key)
 
 		if err != nil {
 			t.Error(err)
@@ -236,7 +241,7 @@ func TestFindPredecessor(t *testing.T) {
 
 		key := [4]byte{3}
 
-		p, err := n1.FindPredecessor(key)
+		p, err := n1.FindPredecessor(ctx, key)
 
 		if err != nil {
 			t.Error(err)
@@ -268,7 +273,7 @@ func TestFindPredecessor(t *testing.T) {
 
 		key := [4]byte{0}
 
-		p, err := n1.FindPredecessor(key)
+		p, err := n1.FindPredecessor(ctx, key)
 
 		if err != nil {
 			t.Error(err)
@@ -278,4 +283,59 @@ func TestFindPredecessor(t *testing.T) {
 			t.Errorf("expected predecessor to be % x, got % x", n1.GetID(), p.GetID())
 		}
 	})
+}
+
+func TestAppendTrace(t *testing.T) {
+	n1 := &Node{addr: newAddr(t), id: [4]byte{4}}
+	n2 := &Node{addr: newAddr(t), id: [4]byte{4}}
+
+	ctx := context.Background()
+
+	md, _ := metadata.FromOutgoingContext(ctx)
+	if _, ok := md["trace"]; ok {
+		t.Errorf("trace should not be in context: %+v", ctx)
+	}
+
+	ctx = n1.AppendTrace(ctx)
+
+	md, _ = metadata.FromOutgoingContext(ctx)
+	trace, ok := md["trace"]
+	if !ok {
+		t.Errorf("trace should be in context: %+v", ctx)
+	}
+	if trace[0] != n1.GetAddr() {
+		t.Errorf("%s for node n1 is not appending to trace %+v", n1.GetAddr(), trace)
+	}
+
+	ctx = n1.AppendTrace(ctx)
+
+	md, _ = metadata.FromOutgoingContext(ctx)
+	trace, ok = md["trace"]
+	if !ok {
+		t.Errorf("trace should be in context: %+v", ctx)
+	}
+	if len(trace) > 1 {
+		t.Errorf("trace should only be len 1, len is %d\n%+v", len(trace), trace)
+	}
+
+	ctx = n2.AppendTrace(ctx)
+	md, _ = metadata.FromOutgoingContext(ctx)
+	trace, ok = md["trace"]
+	if !ok {
+		t.Errorf("trace should be in context after injecting n2 trace %v", ctx)
+	}
+	if len(trace) != 2 {
+		t.Errorf("len(trace) should be 2, is %d", len(trace))
+	}
+
+	ctx = n2.AppendTrace(ctx)
+	md, _ = metadata.FromOutgoingContext(ctx)
+	trace, ok = md["trace"]
+	if !ok {
+		t.Errorf("trace shoudl be in context after injecting n2 trace second time %v", ctx)
+	}
+	if len(trace) != 2 {
+		t.Errorf("len(trace) should be 2, is %d", len(trace))
+	}
+
 }

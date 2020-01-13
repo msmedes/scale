@@ -58,7 +58,10 @@ func (r *RPC) Ping(ctx context.Context, in *pb.Empty) (*pb.Success, error) {
 
 // Get rpc wrapper for node.Get
 func (r *RPC) Get(ctx context.Context, in *pb.GetRequest) (*pb.GetResponse, error) {
-	val, err := r.node.Get(keyspace.ByteArrayToKey(in.GetKey()))
+	r.sugar.Infof("RPC GET INCOMING CTX %+v", ctx)
+	ctx = r.node.AppendTrace(ctx)
+	r.sugar.Infof("RPC GET APPENDED %+v", ctx)
+	val, err := r.node.Get(ctx, keyspace.ByteArrayToKey(in.GetKey()))
 
 	if err != nil {
 		return nil, err
@@ -78,7 +81,8 @@ func (r *RPC) SetLocal(ctx context.Context, in *pb.SetRequest) (*pb.Success, err
 
 // FindSuccessor rpc wrapper for node.FindSuccessor
 func (r *RPC) FindSuccessor(ctx context.Context, in *pb.RemoteQuery) (*pb.RemoteNode, error) {
-	successor, err := r.node.FindSuccessor(keyspace.ByteArrayToKey(in.Id))
+	ctx = r.node.AppendTrace(ctx)
+	successor, err := r.node.FindSuccessor(ctx, keyspace.ByteArrayToKey(in.Id))
 
 	if err != nil {
 		return nil, err
@@ -97,7 +101,8 @@ func (r *RPC) FindSuccessor(ctx context.Context, in *pb.RemoteQuery) (*pb.Remote
 // ClosestPrecedingFinger returns the node that is the closest predecessor
 // of the ID
 func (r *RPC) ClosestPrecedingFinger(ctx context.Context, in *pb.RemoteQuery) (*pb.RemoteNode, error) {
-	closestPrecedingFinger, err := r.node.ClosestPrecedingFinger(keyspace.ByteArrayToKey(in.Id))
+	ctx = r.node.AppendTrace(ctx)
+	closestPrecedingFinger, err := r.node.ClosestPrecedingFinger(ctx, keyspace.ByteArrayToKey(in.Id))
 
 	if err != nil {
 		return nil, err
@@ -115,7 +120,8 @@ func (r *RPC) ClosestPrecedingFinger(ctx context.Context, in *pb.RemoteQuery) (*
 
 // FindPredecessor returns the predecessor of the input key
 func (r *RPC) FindPredecessor(ctx context.Context, in *pb.RemoteQuery) (*pb.RemoteNode, error) {
-	predecessor, err := r.node.FindPredecessor(keyspace.ByteArrayToKey(in.Id))
+	ctx = r.node.AppendTrace(ctx)
+	predecessor, err := r.node.FindPredecessor(ctx, keyspace.ByteArrayToKey(in.Id))
 
 	if err != nil {
 		return nil, err
@@ -132,8 +138,9 @@ func (r *RPC) FindPredecessor(ctx context.Context, in *pb.RemoteQuery) (*pb.Remo
 }
 
 // GetSuccessor successor of the node
-func (r *RPC) GetSuccessor(context.Context, *pb.Empty) (*pb.RemoteNode, error) {
-	successor, err := r.node.GetSuccessor()
+func (r *RPC) GetSuccessor(ctx context.Context, in *pb.Empty) (*pb.RemoteNode, error) {
+	ctx = r.node.AppendTrace(ctx)
+	successor, err := r.node.GetSuccessor(ctx)
 
 	if err != nil {
 		return nil, err
@@ -150,8 +157,9 @@ func (r *RPC) GetSuccessor(context.Context, *pb.Empty) (*pb.RemoteNode, error) {
 }
 
 // GetPredecessor returns the predecessor of the node
-func (r *RPC) GetPredecessor(context.Context, *pb.Empty) (*pb.RemoteNode, error) {
-	predecessor, err := r.node.GetPredecessor()
+func (r *RPC) GetPredecessor(ctx context.Context, in *pb.Empty) (*pb.RemoteNode, error) {
+	ctx = r.node.AppendTrace(ctx)
+	predecessor, err := r.node.GetPredecessor(ctx)
 
 	if err != nil {
 		return nil, err
@@ -186,13 +194,14 @@ func (r *RPC) Notify(ctx context.Context, in *pb.RemoteNode) (*pb.Success, error
 
 // Set rpc wrapper for node.Set
 func (r *RPC) Set(ctx context.Context, in *pb.SetRequest) (*pb.Success, error) {
-	r.node.Set(keyspace.ByteArrayToKey(in.GetKey()), in.GetValue())
+	ctx = r.node.AppendTrace(ctx)
+	r.node.Set(ctx, keyspace.ByteArrayToKey(in.GetKey()), in.GetValue())
 
 	return &pb.Success{}, nil
 }
 
 // GetNodeMetadata return metadata about this node
-func (r *RPC) GetNodeMetadata(context.Context, *pb.Empty) (*pb.NodeMetadata, error) {
+func (r *RPC) GetNodeMetadata(ctx context.Context, in *pb.Empty) (*pb.NodeMetadata, error) {
 	id := r.node.GetID()
 
 	var ft [][]byte
@@ -212,7 +221,7 @@ func (r *RPC) GetNodeMetadata(context.Context, *pb.Empty) (*pb.NodeMetadata, err
 		Keys:        r.node.GetKeys(),
 	}
 
-	predecessor, err := r.node.GetPredecessor()
+	predecessor, err := r.node.GetPredecessor(ctx)
 
 	if err != nil {
 		return nil, err
@@ -224,7 +233,7 @@ func (r *RPC) GetNodeMetadata(context.Context, *pb.Empty) (*pb.NodeMetadata, err
 		meta.PredecessorAddr = predecessor.GetAddr()
 	}
 
-	successor, err := r.node.GetSuccessor()
+	successor, err := r.node.GetSuccessor(ctx)
 
 	if err != nil {
 		return nil, err
@@ -261,7 +270,7 @@ func (r *RPC) ServerListen() {
 		}),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			grpc_zap.UnaryServerInterceptor(r.logger),
-			serverInterceptor,
+			TraceServerInterceptor(),
 		)),
 	}
 

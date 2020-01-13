@@ -14,8 +14,14 @@ serve:
 serve.race:
 	@go run -race cmd/scale/main.go
 
-codegen:
+trace:
+	@go run cmd/scale/
+
+node.codegen:
 	@protoc -I internal/pkg/rpc internal/pkg/rpc/proto/scale.proto --go_out=plugins=grpc:internal/pkg/rpc
+
+trace.codegen:
+	@protoc -I internal/pkg/trace internal/pkg/trace/proto/trace.proto --go_out=plugins=grpc:internal/pkg/trace
 
 docker.build:
 	@docker build -t msmedes/scale:dev .

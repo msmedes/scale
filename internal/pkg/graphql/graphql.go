@@ -176,8 +176,8 @@ func (g *GraphQL) buildSchema() {
 					},
 					Resolve: func(p gql.ResolveParams) (interface{}, error) {
 						key := []byte(p.Args["key"].(string))
-
-						res, err := g.rpc.Get(context.Background(), &pb.GetRequest{Key: key})
+						ctx := context.Background()
+						res, err := g.rpc.Get(ctx, &pb.GetRequest{Key: key})
 
 						if err != nil {
 							return nil, err
