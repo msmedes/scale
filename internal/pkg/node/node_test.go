@@ -5,8 +5,6 @@ import (
 	"log"
 	"testing"
 
-	"google.golang.org/grpc/metadata"
-
 	"github.com/google/uuid"
 	"github.com/msmedes/scale/internal/pkg/keyspace"
 )
@@ -283,59 +281,4 @@ func TestFindPredecessor(t *testing.T) {
 			t.Errorf("expected predecessor to be % x, got % x", n1.GetID(), p.GetID())
 		}
 	})
-}
-
-func TestAppendTrace(t *testing.T) {
-	n1 := &Node{addr: newAddr(t), id: [4]byte{4}}
-	n2 := &Node{addr: newAddr(t), id: [4]byte{4}}
-
-	ctx := context.Background()
-
-	md, _ := metadata.FromOutgoingContext(ctx)
-	if _, ok := md["trace"]; ok {
-		t.Errorf("trace should not be in context: %+v", ctx)
-	}
-
-	ctx = n1.AppendTrace(ctx)
-
-	md, _ = metadata.FromOutgoingContext(ctx)
-	trace, ok := md["trace"]
-	if !ok {
-		t.Errorf("trace should be in context: %+v", ctx)
-	}
-	if trace[0] != n1.GetAddr() {
-		t.Errorf("%s for node n1 is not appending to trace %+v", n1.GetAddr(), trace)
-	}
-
-	ctx = n1.AppendTrace(ctx)
-
-	md, _ = metadata.FromOutgoingContext(ctx)
-	trace, ok = md["trace"]
-	if !ok {
-		t.Errorf("trace should be in context: %+v", ctx)
-	}
-	if len(trace) > 1 {
-		t.Errorf("trace should only be len 1, len is %d\n%+v", len(trace), trace)
-	}
-
-	ctx = n2.AppendTrace(ctx)
-	md, _ = metadata.FromOutgoingContext(ctx)
-	trace, ok = md["trace"]
-	if !ok {
-		t.Errorf("trace should be in context after injecting n2 trace %v", ctx)
-	}
-	if len(trace) != 2 {
-		t.Errorf("len(trace) should be 2, is %d", len(trace))
-	}
-
-	ctx = n2.AppendTrace(ctx)
-	md, _ = metadata.FromOutgoingContext(ctx)
-	trace, ok = md["trace"]
-	if !ok {
-		t.Errorf("trace shoudl be in context after injecting n2 trace second time %v", ctx)
-	}
-	if len(trace) != 2 {
-		t.Errorf("len(trace) should be 2, is %d", len(trace))
-	}
-
 }
