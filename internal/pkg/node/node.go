@@ -261,14 +261,12 @@ func (node *Node) Get(ctx context.Context, key scale.Key) ([]byte, error) {
 		val []byte
 		err error
 	)
-	fmt.Printf("GET ctx 1: %+v\n", ctx)
 	succ, err := node.FindSuccessor(ctx, key)
 	if keyspace.Equal(succ.GetID(), node.id) {
 		val, err = node.GetLocal(ctx, key)
 	} else {
 		val, err = succ.GetLocal(ctx, key)
 	}
-	fmt.Printf("GET ctx 2: %+v\n", ctx)
 
 	if err != nil {
 		return nil, err
@@ -298,7 +296,6 @@ func (node *Node) Set(ctx context.Context, key scale.Key, value []byte) error {
 
 //FindPredecessor finds the predecessor to the id
 func (node *Node) FindPredecessor(ctx context.Context, key scale.Key) (scale.RemoteNode, error) {
-	fmt.Printf("FIND_PREDECESSOR %+v\n", ctx)
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
 
@@ -343,7 +340,6 @@ func (node *Node) FindPredecessor(ctx context.Context, key scale.Key) (scale.Rem
 func (node *Node) FindSuccessor(ctx context.Context, key scale.Key) (scale.RemoteNode, error) {
 	// md, _ := metadata.FromIncomingContext(ctx)
 	// ctx = metadata.NewOutgoingContext(ctx, md)
-	fmt.Printf("FIND_SUCCESSOR %+v\n", ctx)
 	predecessor, err := node.FindPredecessor(ctx, key)
 
 	if err != nil {
@@ -363,7 +359,6 @@ func (node *Node) FindSuccessor(ctx context.Context, key scale.Key) (scale.Remot
 
 // ClosestPrecedingFinger returns the closest preceding finger to the id
 func (node *Node) ClosestPrecedingFinger(ctx context.Context, id scale.Key) (scale.RemoteNode, error) {
-	fmt.Printf("CPF: %+v\n", ctx)
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
 
@@ -662,13 +657,8 @@ func prependContext(ctx context.Context, in []reflect.Value) []reflect.Value {
 
 // SendTraceID blah blah
 func (node *Node) SendTraceID(ctx context.Context) context.Context {
-	// check to see if ctx in md I guess instead of reflection?
-	// fmt.Printf("setTraceID CTX: %+v\n", ctx)
 	outgoingMD, _ := metadata.FromOutgoingContext(ctx)
-	fmt.Printf("***SET TRACE ID: %+v\n", ctx)
-	fmt.Printf("OUTGOING MD: %+v\n", outgoingMD)
 	if traceID, ok := outgoingMD["traceid"]; ok {
-		fmt.Printf("setTraceID CTX: %+v\n", ctx)
 		_, err := node.traceClient.AppendTrace(context.Background(), &pb.AppendTraceRequest{TraceID: traceID[0], Addr: node.GetAddr()})
 		if err != nil {
 			node.sugar.Info(err)
@@ -680,12 +670,8 @@ func (node *Node) SendTraceID(ctx context.Context) context.Context {
 // SendTraceIDRPC blah blah
 func (node *Node) SendTraceIDRPC(ctx context.Context) context.Context {
 	// check to see if ctx in md I guess instead of reflection?
-	// fmt.Printf("setTraceID CTX: %+v\n", ctx)
 	md, _ := metadata.FromIncomingContext(ctx)
-	fmt.Printf("***SET TRACE RPC ID: %+v\n", ctx)
-	fmt.Printf("INCOMING MD: %+v\n", md)
 	if traceID, ok := md["traceid"]; ok {
-		fmt.Printf("setTraceID RPC CTX: %+v\n", ctx)
 		_, err := node.traceClient.AppendTrace(context.Background(), &pb.AppendTraceRequest{TraceID: traceID[0], Addr: node.GetAddr()})
 		if err != nil {
 			node.sugar.Info(err)

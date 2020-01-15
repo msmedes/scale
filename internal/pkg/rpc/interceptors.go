@@ -15,7 +15,6 @@ func TraceServerInterceptor() grpc.UnaryServerInterceptor {
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler) (interface{}, error) {
 		md, _ := metadata.FromIncomingContext(ctx)
-		// fmt.Printf("SERVER MD: %s: %+v\n", info.FullMethod, ctx)
 
 		ctx = metadata.NewIncomingContext(ctx, md)
 
@@ -39,7 +38,6 @@ func TraceClientInterceptor() grpc.UnaryClientInterceptor {
 		}
 
 		ctx = metadata.NewOutgoingContext(ctx, md)
-		// fmt.Printf("CLIENT CONTEXT %s %+v\n", method, ctx)
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 }
