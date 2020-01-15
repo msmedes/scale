@@ -17,8 +17,12 @@ message AppendTraceRequest{
   string addr = 2;
 }
 
+message StartTraceRequest{
+  string traceID = 1;
+}
+
 service Trace {
-  rpc StartTrace(AppendTraceRequest) returns (Success) {}
+  rpc StartTrace(StartTraceRequest) returns (Success) {}
   rpc GetTrace(TraceQuery) returns (TraceMessage) {}
   rpc AppendTrace(AppendTraceRequest) returns (Success) {}
 }

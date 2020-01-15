@@ -23,7 +23,7 @@ var (
 func ServerListen() {
 	n := node.NewNode(addr)
 	rpcServer := rpc.NewRPC(n)
-	graphql := graphql.NewGraphQL(webAddr, rpcServer)
+	graphql := graphql.NewGraphQL(webAddr, rpcServer, addr)
 
 	defer n.Shutdown()
 	defer graphql.Shutdown()
@@ -38,7 +38,8 @@ func ServerListen() {
 
 	go n.StabilizationStart()
 
-	select {} // the heck is this
+	select {} // if this isn't here the thing crashes? idk
+
 }
 
 func getEnv(key string, defaultVal string) string {

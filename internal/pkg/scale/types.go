@@ -16,7 +16,7 @@ type baseNode interface {
 	FindSuccessor(context.Context, Key) (RemoteNode, error)
 	GetAddr() string
 	GetID() Key
-	GetLocal(Key) ([]byte, error)
+	GetLocal(context.Context, Key) ([]byte, error)
 	GetPredecessor(context.Context) (RemoteNode, error)
 	GetSuccessor(context.Context) (RemoteNode, error)
 	SetLocal(Key, []byte) error
@@ -37,12 +37,13 @@ type RemoteNode interface {
 type Node interface {
 	baseNode
 
-	AppendTrace(context.Context) context.Context
 	Get(context.Context, Key) ([]byte, error)
 	GetFingerTableIDs() []Key
 	GetPort() string
 	GetKeys() []string
 	Notify(Key, string) error
+	SendTraceID(context.Context) context.Context
+	SendTraceIDRPC(context.Context) context.Context
 	Set(context.Context, Key, []byte) error
 	TransferKeys(Key, string) int
 }

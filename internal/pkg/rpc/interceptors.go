@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"fmt"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -16,9 +15,10 @@ func TraceServerInterceptor() grpc.UnaryServerInterceptor {
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler) (interface{}, error) {
 		md, _ := metadata.FromIncomingContext(ctx)
+		// fmt.Printf("SERVER MD: %s: %+v\n", info.FullMethod, ctx)
 
-		ctx = context.WithValue(ctx, "trace", md["trace"])
-		fmt.Printf("***SERVER CONTEXT***\n %+v\n", ctx)
+		ctx = metadata.NewIncomingContext(ctx, md)
+
 		return handler(ctx, req)
 	}
 }
@@ -33,6 +33,13 @@ func TraceClientInterceptor() grpc.UnaryClientInterceptor {
 		invoker grpc.UnaryInvoker,
 		opts ...grpc.CallOption) error {
 
+		md, ok := metadata.FromOutgoingContext(ctx)
+		if !ok {
+			md = metadata.Pairs()
+		}
+
+		ctx = metadata.NewOutgoingContext(ctx, md)
+		// fmt.Printf("CLIENT CONTEXT %s %+v\n", method, ctx)
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 }

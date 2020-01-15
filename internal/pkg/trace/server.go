@@ -15,12 +15,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-func init() {
-	t := NewTrace("0.0.0.0", "5000")
-	t.ServerListen()
-	defer t.Shutdown()
-}
-
 // Trace stores the loggers and the map used to store traces
 type Trace struct {
 	addr   string
@@ -69,6 +63,7 @@ func (t *Trace) GetAddr() string {
 
 // ServerListen starts up the trace server
 func (t *Trace) ServerListen() {
+
 	opts := []grpc.ServerOption{
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			grpc_zap.UnaryServerInterceptor(t.logger),
@@ -97,18 +92,19 @@ func (t *Trace) Shutdown() {
 }
 
 // StartTrace starts a trace, duh
-func (t *Trace) StartTrace(ctx context.Context, in *pb.AppendTraceRequest) (*pb.Success, error) {
+func (t *Trace) StartTrace(ctx context.Context, in *pb.StartTraceRequest) (*pb.Success, error) {
 	t.store.mutex.Lock()
 	defer t.store.mutex.Unlock()
 
 	traceID := in.TraceID
-	node := in.Addr
 
 	if _, ok := t.store.store[traceID]; ok {
 		return nil, errors.New("that traceID is already being used...weird")
 	}
 
-	t.store.store[traceID] = append(t.store.store[traceID], node)
+	t.store.store[traceID] = []string{}
+
+	t.sugar.Infof("trace %+v", t.store.store)
 
 	return &pb.Success{}, nil
 }
@@ -118,6 +114,8 @@ func (t *Trace) AppendTrace(ctx context.Context, in *pb.AppendTraceRequest) (*pb
 	t.store.mutex.Lock()
 	defer t.store.mutex.Unlock()
 
+	t.sugar.Infof("PRE-APPEND %+v\n", t.store.store)
+
 	traceID := in.TraceID
 	node := in.Addr
 
@@ -125,13 +123,22 @@ func (t *Trace) AppendTrace(ctx context.Context, in *pb.AppendTraceRequest) (*pb
 		return nil, errors.New("that traceID does not exist in the store")
 	}
 
-	t.store.store[traceID] = append(t.store.store[traceID], node)
+	trace := t.store.store[traceID]
+	if len(trace) == 0 {
+		t.store.store[traceID] = append(t.store.store[traceID], node)
+	} else {
+		if trace[len(trace)-1] != node {
+			t.store.store[traceID] = append(t.store.store[traceID], node)
+		}
+	}
+
+	t.sugar.Infof("POST APPEND %+v\n", t.store.store)
 
 	return &pb.Success{}, nil
 }
 
 // GetTrace returns the trace from a given TraceID.
-// May extend to delete the trace info, or perhaps store maybe 1k
+// May extend to delete the trace info, or perhaps store maybe 20
 // traces in memory.
 func (t *Trace) GetTrace(ctx context.Context, in *pb.TraceQuery) (*pb.TraceMessage, error) {
 	t.store.mutex.RLock()
@@ -143,8 +150,12 @@ func (t *Trace) GetTrace(ctx context.Context, in *pb.TraceQuery) (*pb.TraceMessa
 	if !ok {
 		return nil, errors.New("that traceID does not exist in the store")
 	}
+	t.sugar.Infof("%+v", t.store.store)
 
-	return &pb.TraceMessage{
+	traceMessage := &pb.TraceMessage{
 		Trace: trace,
-	}, nil
+	}
+	delete(t.store.store, traceID)
+
+	return traceMessage, nil
 }

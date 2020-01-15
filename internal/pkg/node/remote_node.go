@@ -173,9 +173,9 @@ func (r *RemoteNode) Ping() error {
 }
 
 //GetLocal proxy
-func (r *RemoteNode) GetLocal(key scale.Key) ([]byte, error) {
+func (r *RemoteNode) GetLocal(ctx context.Context, key scale.Key) ([]byte, error) {
 	val, err := r.RPC.GetLocal(
-		context.Background(),
+		ctx,
 		&pb.GetRequest{Key: key[:]},
 	)
 
@@ -198,7 +198,7 @@ func (r *RemoteNode) SetLocal(key scale.Key, val []byte) error {
 
 //ClosestPrecedingFinger proxy
 func (r *RemoteNode) ClosestPrecedingFinger(ctx context.Context, id scale.Key) (scale.RemoteNode, error) {
-	res, err := r.RPC.ClosestPrecedingFinger(context.Background(), &pb.RemoteQuery{Id: id[:]})
+	res, err := r.RPC.ClosestPrecedingFinger(ctx, &pb.RemoteQuery{Id: id[:]})
 
 	if err != nil {
 		return nil, err

@@ -13,11 +13,14 @@ import (
 	"syscall"
 	"time"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/msmedes/scale/internal/pkg/keyspace"
 	"github.com/msmedes/scale/internal/pkg/scale"
 	"github.com/msmedes/scale/internal/pkg/store"
+	"github.com/msmedes/scale/internal/pkg/trace"
+	pb "github.com/msmedes/scale/internal/pkg/trace/proto"
 	"go.uber.org/zap"
 )
 
@@ -39,6 +42,8 @@ type Node struct {
 	sugar           *zap.SugaredLogger
 	shutdownChannel chan struct{}
 	mutex           sync.RWMutex
+	traceClient     pb.TraceClient
+	traceConn       *grpc.ClientConn
 }
 
 // NewNode create a new node
@@ -69,8 +74,9 @@ func NewNode(addr string) *Node {
 	sugar := logger.Sugar()
 	node.sugar = sugar
 	node.logger = logger
-	node.SetupCloseHandler()
+	node.traceClient, node.traceConn = trace.NewClient("0.0.0.0:5000")
 
+	node.SetupCloseHandler()
 	return node
 }
 
@@ -140,7 +146,7 @@ func (node *Node) TransferKeys(id scale.Key, addr string) (count int) {
 }
 
 func (node *Node) transferKey(key scale.Key, remote scale.RemoteNode) {
-	val, err := node.GetLocal(key)
+	val, err := node.GetLocal(context.Background(), key)
 
 	if err != nil {
 		node.sugar.Error(err)
@@ -240,7 +246,7 @@ func (node *Node) bootstrap(n scale.RemoteNode) {
 }
 
 // GetLocal return a value stored on this node
-func (node *Node) GetLocal(key scale.Key) ([]byte, error) {
+func (node *Node) GetLocal(ctx context.Context, key scale.Key) ([]byte, error) {
 	return node.store.Get(key), nil
 }
 
@@ -255,12 +261,14 @@ func (node *Node) Get(ctx context.Context, key scale.Key) ([]byte, error) {
 		val []byte
 		err error
 	)
+	fmt.Printf("GET ctx 1: %+v\n", ctx)
 	succ, err := node.FindSuccessor(ctx, key)
 	if keyspace.Equal(succ.GetID(), node.id) {
-		val, err = node.GetLocal(key)
+		val, err = node.GetLocal(ctx, key)
 	} else {
-		val, err = succ.GetLocal(key)
+		val, err = succ.GetLocal(ctx, key)
 	}
+	fmt.Printf("GET ctx 2: %+v\n", ctx)
 
 	if err != nil {
 		return nil, err
@@ -271,6 +279,8 @@ func (node *Node) Get(ctx context.Context, key scale.Key) ([]byte, error) {
 
 // Set set a value in the local store
 func (node *Node) Set(ctx context.Context, key scale.Key, value []byte) error {
+	md, _ := metadata.FromIncomingContext(ctx)
+	ctx = metadata.NewOutgoingContext(ctx, md)
 	succ, err := node.FindSuccessor(ctx, key)
 	if keyspace.Equal(node.id, succ.GetID()) {
 		err = node.SetLocal(key, value)
@@ -288,6 +298,7 @@ func (node *Node) Set(ctx context.Context, key scale.Key, value []byte) error {
 
 //FindPredecessor finds the predecessor to the id
 func (node *Node) FindPredecessor(ctx context.Context, key scale.Key) (scale.RemoteNode, error) {
+	fmt.Printf("FIND_PREDECESSOR %+v\n", ctx)
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
 
@@ -330,6 +341,9 @@ func (node *Node) FindPredecessor(ctx context.Context, key scale.Key) (scale.Rem
 
 // FindSuccessor returns the successor for this node
 func (node *Node) FindSuccessor(ctx context.Context, key scale.Key) (scale.RemoteNode, error) {
+	// md, _ := metadata.FromIncomingContext(ctx)
+	// ctx = metadata.NewOutgoingContext(ctx, md)
+	fmt.Printf("FIND_SUCCESSOR %+v\n", ctx)
 	predecessor, err := node.FindPredecessor(ctx, key)
 
 	if err != nil {
@@ -349,6 +363,7 @@ func (node *Node) FindSuccessor(ctx context.Context, key scale.Key) (scale.Remot
 
 // ClosestPrecedingFinger returns the closest preceding finger to the id
 func (node *Node) ClosestPrecedingFinger(ctx context.Context, id scale.Key) (scale.RemoteNode, error) {
+	fmt.Printf("CPF: %+v\n", ctx)
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
 
@@ -377,6 +392,7 @@ func (node *Node) GetPredecessor(ctx context.Context) (scale.RemoteNode, error) 
 
 // GetSuccessor retunrs the node's successor
 func (node *Node) GetSuccessor(ctx context.Context) (scale.RemoteNode, error) {
+
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
 
@@ -415,6 +431,8 @@ func (node *Node) Shutdown() {
 		node.sugar.Infof("Closing connection to %s", remoteConnection.GetAddr())
 		remoteConnection.CloseConnection()
 	}
+	node.traceConn.Close()
+	node.sugar.Info("Closing connection to trace server")
 }
 
 func (node *Node) stabilize() {
@@ -634,27 +652,44 @@ func (node *Node) SetPredecessor(predAddr string, clientAddr string) error {
 	return nil
 }
 
-// AppendTrace appends the node address to the outgoing context
-// Or at least that's what it should do.
-func (node *Node) AppendTrace(ctx context.Context) context.Context {
-	addr := node.GetAddr()
-	md, _ := metadata.FromOutgoingContext(ctx)
-
-	trace, ok := md["trace"]
-	if !ok {
-		ctx = metadata.AppendToOutgoingContext(ctx, "trace", addr)
-	} else {
-		if trace[len(trace)-1] != node.GetAddr() {
-			ctx = metadata.AppendToOutgoingContext(ctx, "trace", addr)
-		}
-	}
-	return ctx
-}
-
 // don't @ me
 func prependContext(ctx context.Context, in []reflect.Value) []reflect.Value {
 	in = append(in, reflect.ValueOf(0))
 	copy(in[1:], in)
 	in[0] = reflect.ValueOf(ctx)
 	return in
+}
+
+// SendTraceID blah blah
+func (node *Node) SendTraceID(ctx context.Context) context.Context {
+	// check to see if ctx in md I guess instead of reflection?
+	// fmt.Printf("setTraceID CTX: %+v\n", ctx)
+	outgoingMD, _ := metadata.FromOutgoingContext(ctx)
+	fmt.Printf("***SET TRACE ID: %+v\n", ctx)
+	fmt.Printf("OUTGOING MD: %+v\n", outgoingMD)
+	if traceID, ok := outgoingMD["traceid"]; ok {
+		fmt.Printf("setTraceID CTX: %+v\n", ctx)
+		_, err := node.traceClient.AppendTrace(context.Background(), &pb.AppendTraceRequest{TraceID: traceID[0], Addr: node.GetAddr()})
+		if err != nil {
+			node.sugar.Info(err)
+		}
+	}
+	return metadata.NewOutgoingContext(ctx, outgoingMD)
+}
+
+// SendTraceIDRPC blah blah
+func (node *Node) SendTraceIDRPC(ctx context.Context) context.Context {
+	// check to see if ctx in md I guess instead of reflection?
+	// fmt.Printf("setTraceID CTX: %+v\n", ctx)
+	md, _ := metadata.FromIncomingContext(ctx)
+	fmt.Printf("***SET TRACE RPC ID: %+v\n", ctx)
+	fmt.Printf("INCOMING MD: %+v\n", md)
+	if traceID, ok := md["traceid"]; ok {
+		fmt.Printf("setTraceID RPC CTX: %+v\n", ctx)
+		_, err := node.traceClient.AppendTrace(context.Background(), &pb.AppendTraceRequest{TraceID: traceID[0], Addr: node.GetAddr()})
+		if err != nil {
+			node.sugar.Info(err)
+		}
+	}
+	return metadata.NewIncomingContext(ctx, md)
 }

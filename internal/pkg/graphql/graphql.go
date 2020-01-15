@@ -7,9 +7,14 @@ import (
 	"log"
 	"net/http"
 
+	"google.golang.org/grpc"
+	md "google.golang.org/grpc/metadata"
+
 	gql "github.com/graphql-go/graphql"
 	"github.com/msmedes/scale/internal/pkg/rpc"
 	pb "github.com/msmedes/scale/internal/pkg/rpc/proto"
+	"github.com/msmedes/scale/internal/pkg/trace"
+	tracePb "github.com/msmedes/scale/internal/pkg/trace/proto"
 	"go.uber.org/zap"
 )
 
@@ -19,16 +24,19 @@ type reqBody struct {
 
 // GraphQL GraphQL object
 type GraphQL struct {
-	addr   string
-	schema gql.Schema
-	sugar  *zap.SugaredLogger
-	logger *zap.Logger
-	rpc    *rpc.RPC
+	addr        string
+	schema      gql.Schema
+	sugar       *zap.SugaredLogger
+	logger      *zap.Logger
+	rpc         *rpc.RPC
+	traceClient tracePb.TraceClient
+	traceConn   *grpc.ClientConn
+	nodeAddr    string
 }
 
 // NewGraphQL Instantiate new GraphQL instance
-func NewGraphQL(addr string, r *rpc.RPC) *GraphQL {
-	obj := &GraphQL{addr: addr, rpc: r}
+func NewGraphQL(addr string, r *rpc.RPC, nodeAddr string) *GraphQL {
+	obj := &GraphQL{addr: addr, rpc: r, nodeAddr: nodeAddr}
 
 	obj.buildSchema()
 
@@ -41,6 +49,8 @@ func NewGraphQL(addr string, r *rpc.RPC) *GraphQL {
 	sugar := logger.Sugar()
 	obj.sugar = sugar
 	obj.logger = logger
+
+	obj.traceClient, obj.traceConn = trace.NewClient("0.0.0.0:5000")
 
 	return obj
 }
@@ -176,9 +186,16 @@ func (g *GraphQL) buildSchema() {
 					},
 					Resolve: func(p gql.ResolveParams) (interface{}, error) {
 						key := []byte(p.Args["key"].(string))
-						ctx := context.Background()
+
+						id := "HELLO!"
+						meta := md.Pairs("traceID", id)
+						ctx := md.NewOutgoingContext(context.Background(), meta)
+						g.traceClient.StartTrace(ctx, &tracePb.StartTraceRequest{TraceID: id})
+						g.traceClient.AppendTrace(ctx, &tracePb.AppendTraceRequest{TraceID: id, Addr: g.nodeAddr})
 						res, err := g.rpc.Get(ctx, &pb.GetRequest{Key: key})
 
+						trace, traceErr := g.traceClient.GetTrace(context.Background(), &tracePb.TraceQuery{TraceID: id})
+						g.sugar.Info(trace, traceErr)
 						if err != nil {
 							return nil, err
 						}
@@ -203,7 +220,9 @@ func (g *GraphQL) buildSchema() {
 					Resolve: func(p gql.ResolveParams) (interface{}, error) {
 						key := []byte(p.Args["key"].(string))
 						val := []byte(p.Args["value"].(string))
-
+						// id := "hello world"
+						// ctx := md.AppendToOutgoingContext(context.Background(), "traceID", id)
+						// g.traceClient.StartTrace(ctx, &tracePb.StartTraceRequest{TraceID: id})
 						_, err := g.rpc.Set(context.Background(), &pb.SetRequest{Key: key, Value: val})
 
 						if err != nil {
@@ -231,4 +250,7 @@ func (g *GraphQL) buildSchema() {
 func (g *GraphQL) Shutdown() {
 	g.logger.Sync()
 	g.sugar.Sync()
+
+	g.traceConn.Close()
+	g.sugar.Info("Closing connection to trace server")
 }
