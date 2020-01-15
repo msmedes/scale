@@ -42,8 +42,8 @@ type Node interface {
 	GetPort() string
 	GetKeys() []string
 	Notify(Key, string) error
-	SendTraceID(context.Context) context.Context
-	SendTraceIDRPC(context.Context) context.Context
+	SendTraceID(context.Context, string) context.Context
+	SendTraceIdRPC(context.Context, string) context.Context
 	Set(context.Context, Key, []byte) error
 	TransferKeys(Key, string) int
 }

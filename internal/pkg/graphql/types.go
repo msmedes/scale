@@ -18,3 +18,19 @@ type nodeMetadata struct {
 type metadata struct {
 	Node *nodeMetadata `json:",omitempty"`
 }
+
+type getRequest struct {
+	Value string        `json:",omitempty"`
+	Trace []*traceEntry `json:",omitempty"`
+}
+
+type setRequest struct {
+	Count int           `json:",omitempty"`
+	Trace []*traceEntry `json:",omitempty"`
+}
+
+type traceEntry struct {
+	Addr         string `json:",omitempty"`
+	FunctionCall string `json:",omitempty"`
+	Duration     string `json:",omitempty"`
+}

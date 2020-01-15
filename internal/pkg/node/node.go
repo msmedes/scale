@@ -277,8 +277,6 @@ func (node *Node) Get(ctx context.Context, key scale.Key) ([]byte, error) {
 
 // Set set a value in the local store
 func (node *Node) Set(ctx context.Context, key scale.Key, value []byte) error {
-	md, _ := metadata.FromIncomingContext(ctx)
-	ctx = metadata.NewOutgoingContext(ctx, md)
 	succ, err := node.FindSuccessor(ctx, key)
 	if keyspace.Equal(node.id, succ.GetID()) {
 		err = node.SetLocal(key, value)
@@ -338,8 +336,6 @@ func (node *Node) FindPredecessor(ctx context.Context, key scale.Key) (scale.Rem
 
 // FindSuccessor returns the successor for this node
 func (node *Node) FindSuccessor(ctx context.Context, key scale.Key) (scale.RemoteNode, error) {
-	// md, _ := metadata.FromIncomingContext(ctx)
-	// ctx = metadata.NewOutgoingContext(ctx, md)
 	predecessor, err := node.FindPredecessor(ctx, key)
 
 	if err != nil {
@@ -656,10 +652,15 @@ func prependContext(ctx context.Context, in []reflect.Value) []reflect.Value {
 }
 
 // SendTraceID blah blah
-func (node *Node) SendTraceID(ctx context.Context) context.Context {
+func (node *Node) SendTraceID(ctx context.Context, functionCall string) context.Context {
 	outgoingMD, _ := metadata.FromOutgoingContext(ctx)
 	if traceID, ok := outgoingMD["traceid"]; ok {
-		_, err := node.traceClient.AppendTrace(context.Background(), &pb.AppendTraceRequest{TraceID: traceID[0], Addr: node.GetAddr()})
+		_, err := node.traceClient.AppendTrace(context.Background(), &pb.AppendTraceRequest{
+			TraceID:      traceID[0],
+			Addr:         node.GetAddr(),
+			FunctionCall: functionCall,
+			Timestamp:    time.Now().UnixNano(),
+		})
 		if err != nil {
 			node.sugar.Info(err)
 		}
@@ -667,12 +668,16 @@ func (node *Node) SendTraceID(ctx context.Context) context.Context {
 	return metadata.NewOutgoingContext(ctx, outgoingMD)
 }
 
-// SendTraceIDRPC blah blah
-func (node *Node) SendTraceIDRPC(ctx context.Context) context.Context {
-	// check to see if ctx in md I guess instead of reflection?
+// SendTraceIdRPC blah blah
+func (node *Node) SendTraceIdRPC(ctx context.Context, functionCall string) context.Context {
 	md, _ := metadata.FromIncomingContext(ctx)
 	if traceID, ok := md["traceid"]; ok {
-		_, err := node.traceClient.AppendTrace(context.Background(), &pb.AppendTraceRequest{TraceID: traceID[0], Addr: node.GetAddr()})
+		_, err := node.traceClient.AppendTrace(context.Background(), &pb.AppendTraceRequest{
+			TraceID:      traceID[0],
+			Addr:         node.GetAddr(),
+			FunctionCall: functionCall,
+			Timestamp:    time.Now().UnixNano(),
+		})
 		if err != nil {
 			node.sugar.Info(err)
 		}

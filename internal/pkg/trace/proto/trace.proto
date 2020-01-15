@@ -4,21 +4,33 @@ package trace;
 
 message Success{}
 
+message TraceEntry{
+  string addr = 1;
+  string functionCall = 2;
+  string duration = 3;
+}
+
 message TraceMessage{
-  repeated string trace = 1;
+  repeated TraceEntry trace = 1;
 }
 
 message TraceQuery{
   string traceID = 1;
+  int64 timestamp = 2;
 }
 
 message AppendTraceRequest{
   string traceID = 1;
   string addr = 2;
+  int64 timestamp = 3;
+  string functionCall = 4;
 }
 
 message StartTraceRequest{
   string traceID = 1;
+  int64 timestamp = 2; 
+  string addr = 3;
+  string functionCall = 4;
 }
 
 service Trace {

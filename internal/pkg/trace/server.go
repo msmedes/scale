@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
@@ -15,17 +16,25 @@ import (
 	"google.golang.org/grpc"
 )
 
+type traceEntry struct {
+	addr         string
+	dispatchedAt time.Time
+	duration     time.Duration
+	functionCall string
+	latency      time.Duration
+}
+
 // Trace stores the loggers and the map used to store traces
 type Trace struct {
 	addr   string
 	logger *zap.Logger
 	port   string
-	sugar  *zap.SugaredLogger
 	store  *store
+	sugar  *zap.SugaredLogger
 }
 
 type store struct {
-	store map[string][]string
+	store map[string][]*traceEntry
 	mutex sync.RWMutex
 }
 
@@ -35,7 +44,7 @@ func NewTrace(addr string, port string) *Trace {
 		addr: addr,
 		port: port,
 		store: &store{
-			store: make(map[string][]string),
+			store: make(map[string][]*traceEntry),
 		},
 	}
 
@@ -59,6 +68,103 @@ func NewTrace(addr string, port string) *Trace {
 // GetAddr returns the address for the trace server
 func (t *Trace) GetAddr() string {
 	return t.addr
+}
+
+// StartTrace starts a trace, duh
+func (t *Trace) StartTrace(ctx context.Context, in *pb.StartTraceRequest) (*pb.Success, error) {
+	t.store.mutex.Lock()
+	defer t.store.mutex.Unlock()
+
+	traceID := in.TraceID
+
+	if _, ok := t.store.store[traceID]; ok {
+		return nil, errors.New("that traceID is already being used...weird")
+	}
+
+	dispatchedAt := time.Unix(0, in.Timestamp) //UTC time
+	latency := time.Since(dispatchedAt)
+
+	firstEntry := &traceEntry{
+		addr:         in.Addr,
+		dispatchedAt: dispatchedAt,
+		latency:      latency,
+		functionCall: in.FunctionCall,
+	}
+
+	t.store.store[traceID] = []*traceEntry{firstEntry}
+
+	return &pb.Success{}, nil
+}
+
+// AppendTrace appends a node addr to an existing traceID
+func (t *Trace) AppendTrace(ctx context.Context, in *pb.AppendTraceRequest) (*pb.Success, error) {
+	t.store.mutex.Lock()
+	defer t.store.mutex.Unlock()
+
+	traceID := in.TraceID
+	addr := in.Addr
+
+	if _, ok := t.store.store[traceID]; !ok {
+		return nil, errors.New("that traceID does not exist in the store")
+	}
+
+	trace := t.store.store[traceID]
+	lastEntry := trace[len(trace)-1]
+
+	if lastEntry.addr != addr {
+		dispatchedAt := time.Unix(0, in.Timestamp)
+		latency := time.Since(dispatchedAt)
+		lastEntry.duration = dispatchedAt.Sub(lastEntry.dispatchedAt)
+		entry := &traceEntry{
+			addr:         addr,
+			dispatchedAt: dispatchedAt,
+			latency:      latency,
+			functionCall: in.FunctionCall,
+		}
+		t.store.store[traceID] = append(t.store.store[traceID], entry)
+	}
+
+	return &pb.Success{}, nil
+}
+
+// GetTrace returns the trace from a given TraceID and then
+// deletes the trace from the store
+func (t *Trace) GetTrace(ctx context.Context, in *pb.TraceQuery) (*pb.TraceMessage, error) {
+	t.store.mutex.RLock()
+	defer t.store.mutex.RUnlock()
+
+	traceID := in.TraceID
+
+	trace, ok := t.store.store[traceID]
+	if !ok {
+		return nil, errors.New("that traceID does not exist in the store")
+	}
+	dispatchedAt := time.Unix(0, in.Timestamp)
+	lastEntry := trace[len(trace)-1]
+	lastEntry.duration = dispatchedAt.Sub(lastEntry.dispatchedAt)
+	for _, entry := range trace {
+		fmt.Printf("%+v\n", entry)
+	}
+	traceMessage := &pb.TraceMessage{
+		Trace: createTraceEntries(trace),
+	}
+	delete(t.store.store, traceID)
+
+	return traceMessage, nil
+}
+
+func createTraceEntries(trace []*traceEntry) []*pb.TraceEntry {
+	var entries []*pb.TraceEntry
+
+	for _, entry := range trace {
+		pbEntry := &pb.TraceEntry{
+			Addr:         entry.addr,
+			FunctionCall: entry.functionCall,
+			Duration:     entry.duration.String(),
+		}
+		entries = append(entries, pbEntry)
+	}
+	return entries
 }
 
 // ServerListen starts up the trace server
@@ -89,73 +195,4 @@ func (t *Trace) ServerListen() {
 func (t *Trace) Shutdown() {
 	t.logger.Sync()
 	t.sugar.Sync()
-}
-
-// StartTrace starts a trace, duh
-func (t *Trace) StartTrace(ctx context.Context, in *pb.StartTraceRequest) (*pb.Success, error) {
-	t.store.mutex.Lock()
-	defer t.store.mutex.Unlock()
-
-	traceID := in.TraceID
-
-	if _, ok := t.store.store[traceID]; ok {
-		return nil, errors.New("that traceID is already being used...weird")
-	}
-
-	t.store.store[traceID] = []string{}
-
-	t.sugar.Infof("trace %+v", t.store.store)
-
-	return &pb.Success{}, nil
-}
-
-// AppendTrace appends a node addr to an existing traceID
-func (t *Trace) AppendTrace(ctx context.Context, in *pb.AppendTraceRequest) (*pb.Success, error) {
-	t.store.mutex.Lock()
-	defer t.store.mutex.Unlock()
-
-	t.sugar.Infof("PRE-APPEND %+v\n", t.store.store)
-
-	traceID := in.TraceID
-	node := in.Addr
-
-	if _, ok := t.store.store[traceID]; !ok {
-		return nil, errors.New("that traceID does not exist in the store")
-	}
-
-	trace := t.store.store[traceID]
-	if len(trace) == 0 {
-		t.store.store[traceID] = append(t.store.store[traceID], node)
-	} else {
-		if trace[len(trace)-1] != node {
-			t.store.store[traceID] = append(t.store.store[traceID], node)
-		}
-	}
-
-	t.sugar.Infof("POST APPEND %+v\n", t.store.store)
-
-	return &pb.Success{}, nil
-}
-
-// GetTrace returns the trace from a given TraceID.
-// May extend to delete the trace info, or perhaps store maybe 20
-// traces in memory.
-func (t *Trace) GetTrace(ctx context.Context, in *pb.TraceQuery) (*pb.TraceMessage, error) {
-	t.store.mutex.RLock()
-	defer t.store.mutex.RUnlock()
-
-	traceID := in.TraceID
-
-	trace, ok := t.store.store[traceID]
-	if !ok {
-		return nil, errors.New("that traceID does not exist in the store")
-	}
-	t.sugar.Infof("%+v", t.store.store)
-
-	traceMessage := &pb.TraceMessage{
-		Trace: trace,
-	}
-	delete(t.store.store, traceID)
-
-	return traceMessage, nil
 }

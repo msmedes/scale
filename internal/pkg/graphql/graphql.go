@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"google.golang.org/grpc"
 	md "google.golang.org/grpc/metadata"
 
+	"github.com/google/uuid"
 	gql "github.com/graphql-go/graphql"
 	"github.com/msmedes/scale/internal/pkg/rpc"
 	pb "github.com/msmedes/scale/internal/pkg/rpc/proto"
@@ -130,6 +132,37 @@ func (g *GraphQL) buildSchema() {
 		},
 	)
 
+	traceType := gql.NewObject(
+		gql.ObjectConfig{
+			Name: "Trace",
+			Fields: gql.Fields{
+				"addr":         &gql.Field{Type: gql.NewNonNull(gql.String)},
+				"functionCall": &gql.Field{Type: gql.NewNonNull(gql.String)},
+				"duration":     &gql.Field{Type: gql.NewNonNull(gql.String)},
+			},
+		},
+	)
+
+	getType := gql.NewObject(
+		gql.ObjectConfig{
+			Name: "Get",
+			Fields: gql.Fields{
+				"value": &gql.Field{Type: gql.NewNonNull(gql.String)},
+				"trace": &gql.Field{Type: gql.NewNonNull(gql.NewList(gql.NewNonNull(traceType)))},
+			},
+		},
+	)
+
+	setType := gql.NewObject(
+		gql.ObjectConfig{
+			Name: "Set",
+			Fields: gql.Fields{
+				"count": &gql.Field{Type: gql.NewNonNull(gql.Int)},
+				"trace": &gql.Field{Type: gql.NewNonNull(gql.NewList(gql.NewNonNull(traceType)))},
+			},
+		},
+	)
+
 	queryType := gql.NewObject(
 		gql.ObjectConfig{
 			Name: "Query",
@@ -180,27 +213,40 @@ func (g *GraphQL) buildSchema() {
 					},
 				},
 				"get": &gql.Field{
-					Type: gql.String,
+					Type: getType,
 					Args: gql.FieldConfigArgument{
 						"key": &gql.ArgumentConfig{Type: gql.NewNonNull(gql.String)},
 					},
 					Resolve: func(p gql.ResolveParams) (interface{}, error) {
 						key := []byte(p.Args["key"].(string))
 
-						id := "HELLO!"
-						meta := md.Pairs("traceID", id)
-						ctx := md.NewOutgoingContext(context.Background(), meta)
-						g.traceClient.StartTrace(ctx, &tracePb.StartTraceRequest{TraceID: id})
-						g.traceClient.AppendTrace(ctx, &tracePb.AppendTraceRequest{TraceID: id, Addr: g.nodeAddr})
+						ctx, id := g.initiateTrace("Get")
 						res, err := g.rpc.Get(ctx, &pb.GetRequest{Key: key})
 
-						trace, traceErr := g.traceClient.GetTrace(context.Background(), &tracePb.TraceQuery{TraceID: id})
-						g.sugar.Info(trace, traceErr)
 						if err != nil {
 							return nil, err
 						}
 
-						return fmt.Sprintf("%s", res.Value), nil
+						trace, traceErr := g.traceClient.GetTrace(context.Background(), &tracePb.TraceQuery{
+							TraceID:   id,
+							Timestamp: time.Now().UnixNano(),
+						})
+
+						if traceErr != nil {
+							return nil, traceErr
+						}
+
+						var traces []*traceEntry
+						for _, entry := range trace.Trace {
+							currEntry := &traceEntry{
+								Addr:         entry.Addr,
+								FunctionCall: entry.FunctionCall,
+								Duration:     entry.Duration,
+							}
+							traces = append(traces, currEntry)
+						}
+
+						return &getRequest{Value: fmt.Sprintf("%s", res.Value), Trace: traces}, nil
 					},
 				},
 			},
@@ -212,7 +258,7 @@ func (g *GraphQL) buildSchema() {
 			Name: "Mutation",
 			Fields: gql.Fields{
 				"set": &gql.Field{
-					Type: gql.Int,
+					Type: setType,
 					Args: gql.FieldConfigArgument{
 						"key":   &gql.ArgumentConfig{Type: gql.NewNonNull(gql.String)},
 						"value": &gql.ArgumentConfig{Type: gql.NewNonNull(gql.String)},
@@ -220,16 +266,38 @@ func (g *GraphQL) buildSchema() {
 					Resolve: func(p gql.ResolveParams) (interface{}, error) {
 						key := []byte(p.Args["key"].(string))
 						val := []byte(p.Args["value"].(string))
-						// id := "hello world"
-						// ctx := md.AppendToOutgoingContext(context.Background(), "traceID", id)
-						// g.traceClient.StartTrace(ctx, &tracePb.StartTraceRequest{TraceID: id})
-						_, err := g.rpc.Set(context.Background(), &pb.SetRequest{Key: key, Value: val})
+
+						ctx, id := g.initiateTrace("Set")
+
+						_, err := g.rpc.Set(ctx, &pb.SetRequest{Key: key, Value: val})
 
 						if err != nil {
 							return nil, err
 						}
 
-						return 1, nil
+						trace, traceErr := g.traceClient.GetTrace(context.Background(), &tracePb.TraceQuery{
+							TraceID:   id,
+							Timestamp: time.Now().UnixNano(),
+						})
+
+						if traceErr != nil {
+							return nil, traceErr
+						}
+
+						var traces []*traceEntry
+						for _, entry := range trace.Trace {
+							currEntry := &traceEntry{
+								Addr:         entry.Addr,
+								FunctionCall: entry.FunctionCall,
+								Duration:     entry.Duration,
+							}
+							traces = append(traces, currEntry)
+						}
+
+						return &setRequest{
+							Count: 1,
+							Trace: traces,
+						}, nil
 					},
 				},
 			},
@@ -253,4 +321,19 @@ func (g *GraphQL) Shutdown() {
 
 	g.traceConn.Close()
 	g.sugar.Info("Closing connection to trace server")
+}
+
+func (g *GraphQL) initiateTrace(functionCall string) (context.Context, string) {
+	uu, _ := uuid.NewRandom()
+	id := uu.String()
+	meta := md.Pairs("traceID", id)
+	ctx := md.NewOutgoingContext(context.Background(), meta)
+	g.traceClient.StartTrace(ctx, &tracePb.StartTraceRequest{
+		TraceID:      id,
+		Addr:         g.nodeAddr,
+		Timestamp:    time.Now().UnixNano(),
+		FunctionCall: functionCall,
+	})
+
+	return ctx, id
 }
