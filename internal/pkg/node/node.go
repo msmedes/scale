@@ -146,13 +146,14 @@ func (node *Node) TransferKeys(id scale.Key, addr string) (count int) {
 }
 
 func (node *Node) transferKey(key scale.Key, remote scale.RemoteNode) {
-	val, err := node.GetLocal(context.Background(), key)
+	ctx := context.Background()
+	val, err := node.GetLocal(ctx, key)
 
 	if err != nil {
 		node.sugar.Error(err)
 	}
 
-	err = remote.SetLocal(key, val)
+	err = remote.SetLocal(ctx, key, val)
 
 	if err != nil {
 		node.sugar.Error(err)
@@ -251,7 +252,7 @@ func (node *Node) GetLocal(ctx context.Context, key scale.Key) ([]byte, error) {
 }
 
 // SetLocal set a value in the local store
-func (node *Node) SetLocal(key scale.Key, value []byte) error {
+func (node *Node) SetLocal(ctx context.Context, key scale.Key, value []byte) error {
 	return node.store.Set(key, value)
 }
 
@@ -279,10 +280,10 @@ func (node *Node) Get(ctx context.Context, key scale.Key) ([]byte, error) {
 func (node *Node) Set(ctx context.Context, key scale.Key, value []byte) error {
 	succ, err := node.FindSuccessor(ctx, key)
 	if keyspace.Equal(node.id, succ.GetID()) {
-		err = node.SetLocal(key, value)
+		err = node.SetLocal(ctx, key, value)
 	} else {
 		remoteNode := newRemoteNode(succ.GetAddr())
-		err = remoteNode.SetLocal(key, value)
+		err = remoteNode.SetLocal(ctx, key, value)
 	}
 
 	if err != nil {

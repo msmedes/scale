@@ -103,6 +103,9 @@ func (t *Trace) AppendTrace(ctx context.Context, in *pb.AppendTraceRequest) (*pb
 
 	traceID := in.TraceID
 	addr := in.Addr
+	if in.FunctionCall == "SetLocal" {
+		fmt.Println("lol what")
+	}
 
 	if _, ok := t.store.store[traceID]; !ok {
 		return nil, errors.New("that traceID does not exist in the store")
@@ -114,6 +117,7 @@ func (t *Trace) AppendTrace(ctx context.Context, in *pb.AppendTraceRequest) (*pb
 	if lastEntry.addr != addr {
 		dispatchedAt := time.Unix(0, in.Timestamp)
 		latency := time.Since(dispatchedAt)
+
 		lastEntry.duration = dispatchedAt.Sub(lastEntry.dispatchedAt)
 		entry := &traceEntry{
 			addr:         addr,
@@ -141,6 +145,7 @@ func (t *Trace) GetTrace(ctx context.Context, in *pb.TraceQuery) (*pb.TraceMessa
 	}
 	dispatchedAt := time.Unix(0, in.Timestamp)
 	lastEntry := trace[len(trace)-1]
+
 	lastEntry.duration = dispatchedAt.Sub(lastEntry.dispatchedAt)
 	for _, entry := range trace {
 		fmt.Printf("%+v\n", entry)

@@ -246,7 +246,10 @@ func (g *GraphQL) buildSchema() {
 							traces = append(traces, currEntry)
 						}
 
-						return &getRequest{Value: fmt.Sprintf("%s", res.Value), Trace: traces}, nil
+						return &getRequest{
+							Value: fmt.Sprintf("%s", res.Value),
+							Trace: traces,
+						}, nil
 					},
 				},
 			},
@@ -268,7 +271,6 @@ func (g *GraphQL) buildSchema() {
 						val := []byte(p.Args["value"].(string))
 
 						ctx, id := g.initiateTrace("Set")
-
 						_, err := g.rpc.Set(ctx, &pb.SetRequest{Key: key, Value: val})
 
 						if err != nil {

@@ -19,7 +19,7 @@ type baseNode interface {
 	GetLocal(context.Context, Key) ([]byte, error)
 	GetPredecessor(context.Context) (RemoteNode, error)
 	GetSuccessor(context.Context) (RemoteNode, error)
-	SetLocal(Key, []byte) error
+	SetLocal(context.Context, Key, []byte) error
 	SetPredecessor(string, string) error
 	SetSuccessor(string, string) error
 }

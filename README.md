@@ -20,18 +20,29 @@ brew cask install bloomrpc
 
 - `make` - run linting and tests
 - `make serve` - start grpc server
+- `make trace` - start the trace server (defaults to port 5000)
 - `PORT=<port number> JOIN=<node to join ip> WEB=<port number> make serve`
+- `make trace.codegen` - generate protobuf code for the trace server
+- `make scale.codegen` - generate protobuf code for the scale server
 
 Internode communication is on port 3000 by default. GraphQL API is on port 8000 by default.
 Useful GraphQL queries:
 
 ```graphql
 query {
-  get(key: "hello")
+  get(key: "hello") {
+    value
+    trace {
+      addr
+      functionCall
+      duration
+    }
+  }
   metadata {
     node {
       id
       addr
+      fingerTable
       predecessor {
         id
         addr
@@ -45,7 +56,14 @@ query {
 }
 
 mutation {
-  set(key: "hello", value: "world")
+  set(key: "hello", value: "world") {
+    count
+    trace {
+      addr
+      functionCall
+      duration
+    }
+  }
 }
 ```
 
@@ -57,6 +75,3 @@ mutation {
 - [another repo](https://github.com/r-medina/gmaj)
 - [Lecture on chord](https://www.youtube.com/watch?v=q29szpcnorA)
 - [Brown Assignment](http://cs.brown.edu/courses/cs138/s17/content/projects/chord.pdf)
-
-
-check out riak

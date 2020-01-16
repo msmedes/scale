@@ -17,7 +17,7 @@ serve.race:
 trace:
 	@go run cmd/trace/main.go
 
-node.codegen:
+scale.codegen:
 	@protoc -I internal/pkg/rpc internal/pkg/rpc/proto/scale.proto --go_out=plugins=grpc:internal/pkg/rpc
 
 trace.codegen:

@@ -187,9 +187,9 @@ func (r *RemoteNode) GetLocal(ctx context.Context, key scale.Key) ([]byte, error
 }
 
 //SetLocal proxy
-func (r *RemoteNode) SetLocal(key scale.Key, val []byte) error {
+func (r *RemoteNode) SetLocal(ctx context.Context, key scale.Key, val []byte) error {
 	_, err := r.RPC.SetLocal(
-		context.Background(),
+		ctx,
 		&pb.SetRequest{Key: key[:], Value: val},
 	)
 

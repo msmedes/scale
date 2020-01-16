@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"time"
@@ -72,8 +73,9 @@ func (r *RPC) Get(ctx context.Context, in *pb.GetRequest) (*pb.GetResponse, erro
 
 // SetLocal rpc wrapper for node.store.Set
 func (r *RPC) SetLocal(ctx context.Context, in *pb.SetRequest) (*pb.Success, error) {
+	fmt.Println("SetLocal")
 	ctx = r.node.SendTraceIdRPC(ctx, "SetLocal")
-	r.node.SetLocal(keyspace.ByteArrayToKey(in.GetKey()), in.GetValue())
+	r.node.SetLocal(ctx, keyspace.ByteArrayToKey(in.GetKey()), in.GetValue())
 
 	return &pb.Success{}, nil
 }
