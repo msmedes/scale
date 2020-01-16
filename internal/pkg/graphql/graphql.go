@@ -57,9 +57,19 @@ func NewGraphQL(addr string, r *rpc.RPC, nodeAddr string) *GraphQL {
 	return obj
 }
 
+func setupResponse(w *http.ResponseWriter, req *http.Request) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	(*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+}
+
 // ServerListen start GraphQL server
 func (g *GraphQL) ServerListen() {
 	http.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "Options" {
+			return
+		}
 		decoder := json.NewDecoder(r.Body)
 		var t reqBody
 		err := decoder.Decode(&t)
