@@ -38,7 +38,8 @@ func ServerListen() {
 
 	go n.StabilizationStart()
 
-	select {} // if this isn't here the thing crashes? idk
+	// infinite loop so that shutdown calls are properly deferred
+	select {}
 
 }
 

@@ -652,25 +652,9 @@ func prependContext(ctx context.Context, in []reflect.Value) []reflect.Value {
 	return in
 }
 
-// SendTraceID blah blah
+// SendTraceID extracts the traceID from incoming context and sends
+// a message to the trace server that it has received the traceID
 func (node *Node) SendTraceID(ctx context.Context, functionCall string) context.Context {
-	outgoingMD, _ := metadata.FromOutgoingContext(ctx)
-	if traceID, ok := outgoingMD["traceid"]; ok {
-		_, err := node.traceClient.AppendTrace(context.Background(), &pb.AppendTraceRequest{
-			TraceID:      traceID[0],
-			Addr:         node.GetAddr(),
-			FunctionCall: functionCall,
-			Timestamp:    time.Now().UnixNano(),
-		})
-		if err != nil {
-			node.sugar.Info(err)
-		}
-	}
-	return metadata.NewOutgoingContext(ctx, outgoingMD)
-}
-
-// SendTraceIdRPC blah blah
-func (node *Node) SendTraceIdRPC(ctx context.Context, functionCall string) context.Context {
 	md, _ := metadata.FromIncomingContext(ctx)
 	if traceID, ok := md["traceid"]; ok {
 		_, err := node.traceClient.AppendTrace(context.Background(), &pb.AppendTraceRequest{
