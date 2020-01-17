@@ -37,6 +37,7 @@ func ServerListen() {
 	}
 
 	go n.StabilizationStart()
+	go n.FixFingerStart()
 
 	// infinite loop so that shutdown calls are properly deferred
 	select {}
