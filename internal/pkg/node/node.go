@@ -107,7 +107,6 @@ func (node *Node) GetFingerTableIDs() []scale.Key {
 	for _, v := range node.fingerTable {
 		keys = append(keys, v.GetID())
 	}
-	node.sugar.Infof("%+v", keys)
 
 	return keys
 }
@@ -486,7 +485,7 @@ func (node *Node) checkPredecessor() {
 	err := predecessor.Ping()
 
 	if err != nil {
-		node.setPredecessor(nil)
+		node.predecessor = nil
 		predecessor.CloseConnection()
 	}
 }

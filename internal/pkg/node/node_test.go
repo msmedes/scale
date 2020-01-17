@@ -87,7 +87,7 @@ func TestCheckPredecessor(t *testing.T) {
 		n.checkPredecessor()
 		p, err := n.GetPredecessor(ctx)
 
-		if err != nil {
+		if err == nil {
 			t.Error(err)
 		}
 
