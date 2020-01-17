@@ -4,28 +4,28 @@ package scale;
 
 message Empty {}
 
-// message TraceID {
-//   string id = 1;
-// }
 
 message GetRequest { 
   bytes key = 1; 
-  // TraceID trace = 2;
 }
+
 message GetResponse { 
   bytes value = 1;
 }
+
 message KeyTransferRequest { 
   bytes id = 1; 
   string addr = 2; 
 }
+
 message RemoteId { 
   bytes id = 1; 
 }
+
 message RemoteQuery { 
   bytes id = 1;
-  // TraceID traceId = 2;
 }
+
 message Success {}
 
 message ShutdownRequest {
@@ -36,7 +36,6 @@ message ShutdownRequest {
 message SetRequest {
   bytes key = 1;
   bytes value = 2;
-  // TraceID traceID = 3;
 }
 
 message NodeMetadata {

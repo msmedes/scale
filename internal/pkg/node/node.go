@@ -25,7 +25,7 @@ import (
 )
 
 // StabilizeInterval how often to execute stabilization in seconds
-const StabilizeInterval = 1
+const StabilizeInterval = 500
 
 // Node main node class
 type Node struct {
@@ -104,6 +104,7 @@ func (node *Node) GetFingerTableIDs() []scale.Key {
 	for _, v := range node.fingerTable {
 		keys = append(keys, v.GetID())
 	}
+	node.sugar.Infof("%+v", keys)
 
 	return keys
 }
@@ -112,7 +113,7 @@ func (node *Node) GetFingerTableIDs() []scale.Key {
 // is up to date and accurate
 func (node *Node) StabilizationStart() {
 	next := 0
-	ticker := time.NewTicker(StabilizeInterval * time.Second)
+	ticker := time.NewTicker(StabilizeInterval * time.Millisecond)
 
 	for {
 		select {
@@ -170,6 +171,16 @@ func (node *Node) JoinAddr(addr string) {
 	node.join(newRemoteNode(addr))
 }
 
+func (node *Node) setSuccessor(successor scale.RemoteNode) {
+	fmt.Printf("setting successor to %s pred: %s\n", successor.GetAddr(), node.predecessor.GetAddr())
+	node.successor = successor
+}
+
+func (node *Node) setPredecessor(predecessor scale.RemoteNode) {
+	fmt.Printf("setting predecessor to %s succ: %s\n", predecessor.GetAddr(), node.successor.GetAddr())
+	node.predecessor = predecessor
+}
+
 func (node *Node) join(remote scale.RemoteNode) {
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
@@ -202,8 +213,9 @@ func (node *Node) join(remote scale.RemoteNode) {
 		s = successor
 	}
 
-	node.successor = s
-	node.predecessor = p
+	node.fingerTable[0] = s
+	node.setSuccessor(s)
+	node.setPredecessor(p)
 
 	p.Notify(node)
 	s.Notify(node)
@@ -214,7 +226,7 @@ func (node *Node) join(remote scale.RemoteNode) {
 }
 
 func (node *Node) bootstrap(n scale.RemoteNode) {
-	var p scale.RemoteNode
+	var p, s scale.RemoteNode
 	var err error
 	ctx := context.Background()
 	for i := 0; i < scale.M; i++ {
@@ -228,7 +240,7 @@ func (node *Node) bootstrap(n scale.RemoteNode) {
 			node.sugar.Fatalf("no successor found")
 		}
 
-		s := p
+		s = p
 
 		for keyspace.GT(p.GetID(), startKey) {
 			s = p
@@ -304,22 +316,51 @@ func (node *Node) FindPredecessor(ctx context.Context, key scale.Key) (scale.Rem
 	n1 = node.toRemoteNode()
 	successor := node.successor
 
-	if !keyspace.BetweenRightInclusive(key, node.predecessor.GetID(), node.successor.GetID()) {
-		n1, err = node.CallFunction(ctx, "ClosestPrecedingFinger", n1, key)
+	if n1 == node.successor {
+		return n1, nil
 	}
 
-	successor, err = node.CallFunction(ctx, "GetSuccessor", n1)
-	if err != nil {
-		return nil, err
-	}
+	// if !keyspace.BetweenRightInclusive(key, node.predecessor.GetID(), node.successor.GetID()) {
+	// 	n1, err = node.CallFunction(ctx, "ClosestPrecedingFinger", n1, key)
+	// }
 
-	successor = newRemoteNode(successor.GetAddr())
+	// successor, err = node.CallFunction(ctx, "GetSuccessor", n1)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	if err != nil {
-		return nil, err
-	}
+	// successor = newRemoteNode(successor.GetAddr())
 
-	for !keyspace.BetweenRightInclusive(key, n1.GetID(), successor.GetID()) && !keyspace.Equal(n1.GetID(), node.id) {
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// for !keyspace.BetweenRightInclusive(key, n1.GetID(), successor.GetID()) && !keyspace.Equal(n1.GetID(), node.id) {
+	// 	n1, err = node.CallFunction(ctx, "ClosestPrecedingFinger", n1, key)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	successor, err = node.CallFunction(ctx, "GetSuccessor", n1)
+
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
+
+	for !keyspace.BetweenRightInclusive(key, n1.GetID(), successor.GetID()) {
+		// n1, err = n1.ClosestPrecedingFinger(ctx, key)
+
+		// if err != nil {
+		// 	return nil, err
+		// }
+
+		// successor, err = n1.GetSuccessor(ctx)
+
+		// if err != nil {
+		// 	return nil, err
+		// }
+
 		n1, err = node.CallFunction(ctx, "ClosestPrecedingFinger", n1, key)
 		if err != nil {
 			return nil, err
@@ -330,6 +371,7 @@ func (node *Node) FindPredecessor(ctx context.Context, key scale.Key) (scale.Rem
 		if err != nil {
 			return nil, err
 		}
+
 	}
 
 	return n1, nil
@@ -379,7 +421,7 @@ func (node *Node) GetPredecessor(ctx context.Context) (scale.RemoteNode, error) 
 		return node.predecessor, nil
 	}
 
-	return nil, nil
+	return nil, errors.New("no predecessor found")
 }
 
 // GetSuccessor retunrs the node's successor
@@ -428,33 +470,33 @@ func (node *Node) Shutdown() {
 }
 
 func (node *Node) stabilize() {
-	var x scale.RemoteNode
+	var succ scale.RemoteNode
 	var err error
 
 	ctx := context.Background()
-	x, err = node.CallFunction(ctx, "GetSuccessor", node.predecessor)
+	succ, err = node.CallFunction(ctx, "GetSuccessor", node.predecessor)
 
 	if err != nil {
 		node.sugar.Fatal(err)
 	}
 
-	if x != nil && keyspace.Between(x.GetID(), node.predecessor.GetID(), node.id) {
+	if succ != nil && keyspace.Between(succ.GetID(), node.predecessor.GetID(), node.id) {
 		node.mutex.Lock()
-		node.predecessor = newRemoteNode(x.GetAddr())
+		node.setPredecessor(newRemoteNode(succ.GetAddr()))
 		node.sugar.Infof("predecessor set to %v", node.predecessor.GetAddr())
 		node.mutex.Unlock()
 	}
 
-	x, err = node.CallFunction(ctx, "GetSuccessor", node.successor)
+	succ, err = node.CallFunction(ctx, "GetSuccessor", node.successor)
 	if err != nil {
 		node.sugar.Error(err)
 	}
 
-	if x != nil && keyspace.Between(x.GetID(), node.id, node.successor.GetID()) {
+	if succ != nil && keyspace.Between(succ.GetID(), node.id, node.successor.GetID()) {
 		node.mutex.Lock()
-		successor := newRemoteNode(x.GetAddr())
+		successor := newRemoteNode(succ.GetAddr())
 		node.fingerTable[0] = successor
-		node.successor = successor
+		node.setSuccessor(successor)
 		node.mutex.Unlock()
 		node.sugar.Infof("successor set to %v", successor.GetAddr())
 	}
@@ -474,7 +516,7 @@ func (node *Node) checkPredecessor() {
 	err := predecessor.Ping()
 
 	if err != nil {
-		node.predecessor = nil
+		node.setPredecessor(nil)
 		predecessor.CloseConnection()
 	}
 }
@@ -486,8 +528,8 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 		node.mutex.Lock()
 		remote := newRemoteNode(addr)
 		node.fingerTable[0] = remote
-		node.successor = remote
-		node.predecessor = remote
+		node.setSuccessor(remote)
+		node.setPredecessor(remote)
 		node.sugar.Infof("Predecessor and successor set to %s", remote.GetAddr())
 
 		node.sugar.Infof("Transferring keys to %s", remote.GetAddr())
@@ -504,7 +546,7 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 		node.mutex.Lock()
 		successor := newRemoteNode(addr)
 		node.fingerTable[0] = successor
-		node.successor = successor
+		node.setSuccessor(successor)
 		node.sugar.Infof("Successor set to %v %p", node.successor.GetID(), node.successor)
 
 		node.sugar.Infof("transferring keys to %s", successor.GetAddr())
@@ -518,7 +560,7 @@ func (node *Node) Notify(id scale.Key, addr string) error {
 	if keyspace.Between(id, node.predecessor.GetID(), node.id) {
 		node.mutex.Lock()
 		predecessor := newRemoteNode(addr)
-		node.predecessor = predecessor
+		node.setPredecessor(predecessor)
 		node.sugar.Infof("Predecessor set to %+v %p", node.predecessor, node.predecessor)
 		node.mutex.Unlock()
 		node.bootstrap(predecessor)
@@ -532,6 +574,7 @@ func (node *Node) toRemoteNode() scale.RemoteNode {
 	return newRemoteNodeWithID(node.addr, node.id)
 }
 
+// Check figure 5 for init_finger_table, something is up
 func (node *Node) fixNextFinger(next int) int {
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
@@ -542,7 +585,7 @@ func (node *Node) fixNextFinger(next int) int {
 		next = 0
 	}
 
-	nextHash := fingerMath(node.id[:], next)
+	nextHash := fingerMath(node.id[:], next+1)
 	successor, _ := node.FindSuccessor(ctx, keyspace.ByteArrayToKey(nextHash))
 	finger := newRemoteNode(successor.GetAddr())
 	node.fingerTable[next] = finger
@@ -628,6 +671,7 @@ func (node *Node) SetupCloseHandler() {
 func (node *Node) SetSuccessor(succAddr string, clientAddr string) error {
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
+	fmt.Printf("successor set to %s", succAddr)
 	node.successor = newRemoteNode(succAddr)
 	remotes.data[clientAddr].CloseConnection()
 	node.fingerTable[0] = node.successor
@@ -639,7 +683,8 @@ func (node *Node) SetSuccessor(succAddr string, clientAddr string) error {
 func (node *Node) SetPredecessor(predAddr string, clientAddr string) error {
 	node.mutex.RLock()
 	defer node.mutex.RUnlock()
-	node.predecessor = newRemoteNode(predAddr)
+	fmt.Printf("predecessor set to %s", predAddr)
+	node.setPredecessor(newRemoteNode(predAddr))
 	remotes.data[clientAddr].CloseConnection()
 	return nil
 }

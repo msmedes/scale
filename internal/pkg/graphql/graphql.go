@@ -183,7 +183,6 @@ func (g *GraphQL) buildSchema() {
 						nodeMeta, err := g.rpc.GetNodeMetadata(context.Background(), &pb.Empty{})
 
 						var ft []string
-
 						for _, k := range nodeMeta.GetFingerTable() {
 							ft = append(ft, fmt.Sprintf("%x", k))
 						}
