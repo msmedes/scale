@@ -54,8 +54,11 @@ func fingerMath(n []byte, i int) []byte {
 	byteArray := res.Bytes()
 
 	// this hack is bad and makes me feel bad
-	if len(byteArray) < len(n) {
-		byteArray = append([]byte{0}, byteArray...)
+	keyLength := scale.M / 8
+	if len(byteArray) < keyLength {
+		for i := 0; i <= keyLength-len(byteArray); i++ {
+			byteArray = append([]byte{0}, byteArray...)
+		}
 	}
 
 	return byteArray
