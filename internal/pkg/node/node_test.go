@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	Addr1 = "0.0.0.0:3000"
-	Addr2 = "0.0.0.0:3001"
+	Addr1 = "0.0.0.0:3020"
+	Addr2 = "0.0.0.0:3021"
 )
 
 var ctx context.Context = context.Background()
@@ -142,6 +142,7 @@ func TestClosestPrecedingFinger(t *testing.T) {
 	clearRemotes()
 
 	n := &Node{addr: newAddr(t), id: [4]byte{1}}
+
 	nRemote := n.toRemoteNode()
 	n.fingerTable = newFingerTable(nRemote)
 
@@ -185,9 +186,9 @@ func TestClosestPrecedingFinger(t *testing.T) {
 	})
 
 	t.Run("other vals in ft", func(t *testing.T) {
-		n.fingerTable[0] = newRemoteNodeWithID(newAddr(t), [4]byte{2})
-		n.fingerTable[1] = newRemoteNodeWithID(newAddr(t), [4]byte{4})
-		n.fingerTable[2] = newRemoteNodeWithID(newAddr(t), [4]byte{8})
+		n.fingerTable.Table[0] = newRemoteNodeWithID(newAddr(t), [4]byte{2})
+		n.fingerTable.Table[1] = newRemoteNodeWithID(newAddr(t), [4]byte{4})
+		n.fingerTable.Table[2] = newRemoteNodeWithID(newAddr(t), [4]byte{8})
 
 		key := [4]byte{5}
 

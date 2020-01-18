@@ -5,7 +5,7 @@ import "context"
 // Canonical types for the implementation
 
 // M bit keyspace
-const M = 32
+const M int = 32
 
 // Key 20 byte key
 type Key = [M / 8]byte

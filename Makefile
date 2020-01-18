@@ -14,6 +14,9 @@ serve:
 serve.race:
 	@go run -race cmd/scale/main.go
 
+serve.silent:
+	@go run cmd/scale/main.go 2>/dev/null
+
 trace:
 	@go run cmd/trace/main.go
 

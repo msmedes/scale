@@ -60,10 +60,20 @@ func TestFingerMath(t *testing.T) {
 	for _, tt := range tests {
 		n := big.NewInt(tt.n).Bytes()
 		got := keyspace.ByteArrayToKey(fingerMath(n, tt.i))
-		want := keyspace.ByteArrayToKey(big.NewInt(tt.exp).Bytes())
+		expPrepend := padByteArray(fingerMath(n, tt.i), big.NewInt(tt.exp).Bytes())
+		exp := keyspace.ByteArrayToKey(expPrepend)
 
-		if !bytes.Equal(got[:], want[:]) {
-			t.Fatalf("expected %v for n %v, got %v for %+v", want, n, got, tt)
+		if !bytes.Equal(got[:], exp[:]) {
+			t.Fatalf("expected %v for n %v, got %v for %+v %v", exp, n, got, tt, expPrepend)
 		}
 	}
+}
+
+func padByteArray(got, exp []byte) []byte {
+	if len(exp) < len(got) {
+		for i := 0; i < len(got)-len(exp); i++ {
+			exp = append([]byte{0}, exp...)
+		}
+	}
+	return exp
 }
