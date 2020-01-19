@@ -65,20 +65,23 @@ func setupResponse(w *http.ResponseWriter, req *http.Request) {
 
 // ServerListen start GraphQL server
 func (g *GraphQL) ServerListen() {
+	var params struct {
+		Query         string                 `json:"query"`
+		OperationName string                 `json:"operationName"`
+		Variables     map[string]interface{} `json:"variables"`
+	}
 	http.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
 		setupResponse(&w, r)
 		if (*r).Method == "Options" {
 			return
 		}
-		decoder := json.NewDecoder(r.Body)
-		var t reqBody
-		err := decoder.Decode(&t)
+		err := json.NewDecoder(r.Body).Decode(&params)
 
 		if err != err {
 			http.Error(w, "error parsing JSON request body", 400)
 		}
 
-		result := g.execute(t.Query)
+		result := g.execute(params.Query, params.Variables)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(result)
 	})
@@ -92,10 +95,11 @@ func (g *GraphQL) ServerListen() {
 	}
 }
 
-func (g *GraphQL) execute(query string) *gql.Result {
+func (g *GraphQL) execute(query string, variables map[string]interface{}) *gql.Result {
 	result := gql.Do(gql.Params{
-		Schema:        g.schema,
-		RequestString: query,
+		Schema:         g.schema,
+		RequestString:  query,
+		VariableValues: variables,
 	})
 
 	if len(result.Errors) > 0 {
