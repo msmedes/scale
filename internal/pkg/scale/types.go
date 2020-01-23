@@ -39,6 +39,7 @@ type Node interface {
 
 	Get(context.Context, Key) ([]byte, error)
 	GetFingerTableIDs() []Key
+	GetFingerTableAddrs() []string
 	GetPort() string
 	GetKeys() []string
 	Notify(Key, string) error

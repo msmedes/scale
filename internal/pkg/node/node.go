@@ -111,6 +111,20 @@ func (node *Node) GetFingerTableIDs() []scale.Key {
 	return keys
 }
 
+// GetFingerTableAddrs returns an array of Addrs in the table
+func (node *Node) GetFingerTableAddrs() []string {
+	node.mutex.RLock()
+	defer node.mutex.RUnlock()
+	var keys []string
+
+	for _, v := range node.fingerTable.Table {
+		keys = append(keys, v.GetAddr())
+	}
+
+	return keys
+
+}
+
 // StabilizationStart runs periodically to ping the predecessor and
 // stabilize the node.
 func (node *Node) StabilizationStart() {

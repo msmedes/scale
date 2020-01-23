@@ -124,13 +124,14 @@ func (g *GraphQL) buildSchema() {
 		gql.ObjectConfig{
 			Name: "NodeMetadata",
 			Fields: gql.Fields{
-				"id":          &gql.Field{Type: gql.NewNonNull(gql.String)},
-				"addr":        &gql.Field{Type: gql.NewNonNull(gql.String)},
-				"port":        &gql.Field{Type: gql.NewNonNull(gql.String)},
-				"predecessor": &gql.Field{Type: remoteNodeMetadataType},
-				"successor":   &gql.Field{Type: remoteNodeMetadataType},
-				"fingerTable": &gql.Field{Type: gql.NewNonNull(gql.NewList(gql.NewNonNull(gql.String)))},
-				"keys":        &gql.Field{Type: gql.NewNonNull(gql.NewList(gql.NewNonNull(gql.String)))},
+				"id":               &gql.Field{Type: gql.NewNonNull(gql.String)},
+				"addr":             &gql.Field{Type: gql.NewNonNull(gql.String)},
+				"port":             &gql.Field{Type: gql.NewNonNull(gql.String)},
+				"predecessor":      &gql.Field{Type: remoteNodeMetadataType},
+				"successor":        &gql.Field{Type: remoteNodeMetadataType},
+				"fingerTableIDs":   &gql.Field{Type: gql.NewNonNull(gql.NewList(gql.NewNonNull(gql.String)))},
+				"fingerTableAddrs": &gql.Field{Type: gql.NewNonNull(gql.NewList(gql.NewNonNull(gql.String)))},
+				"keys":             &gql.Field{Type: gql.NewNonNull(gql.NewList(gql.NewNonNull(gql.String)))},
 			},
 		},
 	)
@@ -186,17 +187,23 @@ func (g *GraphQL) buildSchema() {
 					Resolve: func(p gql.ResolveParams) (interface{}, error) {
 						nodeMeta, err := g.rpc.GetNodeMetadata(context.Background(), &pb.Empty{})
 
-						var ft []string
-						for _, k := range nodeMeta.GetFingerTable() {
-							ft = append(ft, fmt.Sprintf("%x", k))
+						var ftIDs []string
+						var ftAddrs []string
+
+						for _, k := range nodeMeta.GetFingerTableID() {
+							ftIDs = append(ftIDs, fmt.Sprintf("%x", k))
 						}
 
+						for _, k := range nodeMeta.GetFingerTableAddrs() {
+							ftAddrs = append(ftAddrs, k)
+						}
 						node := &nodeMetadata{
-							ID:          fmt.Sprintf("%x", nodeMeta.GetId()),
-							Addr:        nodeMeta.GetAddr(),
-							Port:        nodeMeta.GetPort(),
-							FingerTable: ft,
-							Keys:        nodeMeta.GetKeys(),
+							ID:               fmt.Sprintf("%x", nodeMeta.GetId()),
+							Addr:             nodeMeta.GetAddr(),
+							Port:             nodeMeta.GetPort(),
+							FingerTableIDs:   ftIDs,
+							FingerTableAddrs: ftAddrs,
+							Keys:             nodeMeta.GetKeys(),
 						}
 
 						if err != nil {

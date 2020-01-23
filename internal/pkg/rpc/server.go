@@ -205,21 +205,27 @@ func (r *RPC) Set(ctx context.Context, in *pb.SetRequest) (*pb.Success, error) {
 func (r *RPC) GetNodeMetadata(ctx context.Context, in *pb.Empty) (*pb.NodeMetadata, error) {
 	id := r.node.GetID()
 
-	var ft [][]byte
+	var ftIDs [][]byte
+	var ftAddrs []string
 
 	// Idk man, this is what it wants
 	for _, k := range r.node.GetFingerTableIDs() {
 		keyID := make([]byte, len(k))
 		copy(keyID, k[:])
-		ft = append(ft, keyID)
+		ftIDs = append(ftIDs, keyID)
+	}
+
+	for _, k := range r.node.GetFingerTableAddrs() {
+		ftAddrs = append(ftAddrs, k)
 	}
 
 	meta := &pb.NodeMetadata{
-		Id:          id[:],
-		Addr:        r.node.GetAddr(),
-		Port:        r.node.GetPort(),
-		FingerTable: ft,
-		Keys:        r.node.GetKeys(),
+		Id:               id[:],
+		Addr:             r.node.GetAddr(),
+		Port:             r.node.GetPort(),
+		FingerTableID:    ftIDs,
+		FingerTableAddrs: ftAddrs,
+		Keys:             r.node.GetKeys(),
 	}
 
 	predecessor, err := r.node.GetPredecessor(ctx)
