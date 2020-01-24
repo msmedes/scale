@@ -324,3 +324,25 @@ func (r *RPC) SetSuccessor(ctx context.Context, in *pb.ShutdownRequest) (*pb.Emp
 
 	return &pb.Empty{}, nil
 }
+
+// GetNetwork returns the order of the Chord ring
+func (r *RPC) GetNetwork(ctx context.Context, in *pb.NetworkMessage) (*pb.NetworkMessage, error) {
+	nodes := in.Nodes
+	if !inNodes(nodes, r.node.GetAddr()) {
+		nodes = append(nodes, r.node.GetAddr())
+
+		succ, _ := r.node.GetSuccessor(ctx)
+
+		nodes, _ = succ.GetNetwork(nodes)
+	}
+	return &pb.NetworkMessage{Nodes: nodes}, nil
+}
+
+func inNodes(nodes []string, node string) bool {
+	for _, item := range nodes {
+		if item == node {
+			return true
+		}
+	}
+	return false
+}

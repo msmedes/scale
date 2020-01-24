@@ -35,3 +35,7 @@ type traceEntry struct {
 	FunctionCall string `json:",omitempty"`
 	Duration     string `json:",omitempty"`
 }
+
+type network struct {
+	Nodes []string `json:",omitempty"`
+}

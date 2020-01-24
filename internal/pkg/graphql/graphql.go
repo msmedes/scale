@@ -110,6 +110,15 @@ func (g *GraphQL) execute(query string, variables map[string]interface{}) *gql.R
 }
 
 func (g *GraphQL) buildSchema() {
+	getNetworkType := gql.NewObject(
+		gql.ObjectConfig{
+			Name: "GetNetwork",
+			Fields: gql.Fields{
+				"nodes": &gql.Field{Type: gql.NewNonNull(gql.NewList(gql.NewNonNull(gql.String)))},
+			},
+		},
+	)
+
 	remoteNodeMetadataType := gql.NewObject(
 		gql.ObjectConfig{
 			Name: "RemoteNodeMetadata",
@@ -182,6 +191,16 @@ func (g *GraphQL) buildSchema() {
 		gql.ObjectConfig{
 			Name: "Query",
 			Fields: gql.Fields{
+				"getNetwork": &gql.Field{
+					Type: getNetworkType,
+					Resolve: func(p gql.ResolveParams) (interface{}, error) {
+						nodes, err := g.rpc.GetNetwork(context.Background(), &pb.NetworkMessage{})
+
+						return &network{
+							Nodes: nodes.Nodes,
+						}, err
+					},
+				},
 				"metadata": &gql.Field{
 					Type: metadataType,
 					Resolve: func(p gql.ResolveParams) (interface{}, error) {

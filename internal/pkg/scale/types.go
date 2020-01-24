@@ -29,6 +29,7 @@ type RemoteNode interface {
 	baseNode
 
 	CloseConnection() error
+	GetNetwork([]string) ([]string, error)
 	Notify(Node) error
 	Ping() error
 }

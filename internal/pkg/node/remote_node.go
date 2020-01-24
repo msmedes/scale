@@ -227,6 +227,15 @@ func (r *RemoteNode) SetSuccessor(addr string, clientAddr string) error {
 	return err
 }
 
+// GetNetwork proxy
+func (r *RemoteNode) GetNetwork(nodes []string) ([]string, error) {
+	network, err := r.RPC.GetNetwork(context.Background(), &pb.NetworkMessage{
+		Nodes: nodes,
+	})
+
+	return network.Nodes, err
+}
+
 func clearRemotes() {
 	remotes.mutex.Lock()
 	defer remotes.mutex.Unlock()

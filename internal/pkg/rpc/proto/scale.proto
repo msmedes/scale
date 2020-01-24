@@ -57,20 +57,25 @@ message RemoteNode {
   bool present = 3;
 }
 
+message NetworkMessage {
+  repeated string nodes = 1;
+}
+
 service Scale {
   rpc ClosestPrecedingFinger(RemoteQuery) returns (RemoteNode) {}
-  rpc GetSuccessor(Empty) returns (RemoteNode) {}
-  rpc GetPredecessor(Empty) returns (RemoteNode) {}
   rpc FindPredecessor(RemoteQuery) returns (RemoteNode) {}
   rpc FindSuccessor(RemoteQuery) returns (RemoteNode) {}
+  rpc Get(GetRequest) returns (GetResponse) {}
+  rpc GetLocal(GetRequest) returns (GetResponse) {}
+  rpc GetNetwork(NetworkMessage) returns (NetworkMessage) {}
+  rpc GetNodeMetadata(Empty) returns (NodeMetadata) {}
+  rpc GetPredecessor(Empty) returns (RemoteNode) {}
+  rpc GetSuccessor(Empty) returns (RemoteNode) {}
+  rpc Notify(RemoteNode) returns (Success) {}
+  rpc Ping(Empty) returns (Success) {}
+  rpc Set(SetRequest) returns (Success) {}
+  rpc SetLocal(SetRequest) returns (Success) {}
   rpc SetPredecessor(ShutdownRequest) returns (Empty) {}
   rpc SetSuccessor(ShutdownRequest) returns (Empty) {}
-  rpc Notify(RemoteNode) returns (Success) {}
-  rpc GetLocal(GetRequest) returns (GetResponse) {}
-  rpc SetLocal(SetRequest) returns (Success) {}
-  rpc Get(GetRequest) returns (GetResponse) {}
-  rpc Set(SetRequest) returns (Success) {}
-  rpc GetNodeMetadata(Empty) returns (NodeMetadata) {}
-  rpc Ping(Empty) returns (Success) {}
   rpc TransferKeys(KeyTransferRequest) returns (Success) {}
 }
