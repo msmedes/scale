@@ -1,6 +1,7 @@
 package node
 
 import (
+	"context"
 	"log"
 	"testing"
 
@@ -9,9 +10,11 @@ import (
 )
 
 const (
-	Addr1 = "0.0.0.0:3000"
-	Addr2 = "0.0.0.0:3001"
+	Addr1 = "0.0.0.0:3020"
+	Addr2 = "0.0.0.0:3021"
 )
+
+var ctx context.Context = context.Background()
 
 func newAddr(t *testing.T) string {
 	id, err := uuid.NewRandom()
@@ -28,7 +31,7 @@ func TestNewNode(t *testing.T) {
 	n := NewNode(Addr1)
 
 	t.Run("sets successor to itself", func(t *testing.T) {
-		s, err := n.GetSuccessor()
+		s, err := n.GetSuccessor(ctx)
 
 		if err != nil {
 			t.Error(err)
@@ -40,7 +43,7 @@ func TestNewNode(t *testing.T) {
 	})
 
 	t.Run("sets predecessor to itself", func(t *testing.T) {
-		p, err := n.GetPredecessor()
+		p, err := n.GetPredecessor(ctx)
 
 		if err != nil {
 			t.Error(err)
@@ -68,7 +71,7 @@ func TestCheckPredecessor(t *testing.T) {
 
 	t.Run("does nothing when predecessor is itself", func(t *testing.T) {
 		n.checkPredecessor()
-		p, err := n.GetPredecessor()
+		p, err := n.GetPredecessor(ctx)
 
 		if err != nil {
 			t.Error(err)
@@ -82,9 +85,9 @@ func TestCheckPredecessor(t *testing.T) {
 	t.Run("removes predecessor if there is an error pinging it", func(t *testing.T) {
 		n.predecessor = newRemoteNode(Addr2)
 		n.checkPredecessor()
-		p, err := n.GetPredecessor()
+		p, err := n.GetPredecessor(ctx)
 
-		if err != nil {
+		if err == nil {
 			t.Error(err)
 		}
 
@@ -139,12 +142,13 @@ func TestClosestPrecedingFinger(t *testing.T) {
 	clearRemotes()
 
 	n := &Node{addr: newAddr(t), id: [4]byte{1}}
+
 	nRemote := n.toRemoteNode()
 	n.fingerTable = newFingerTable(nRemote)
 
 	t.Run("ft is all one value < key", func(t *testing.T) {
 		key := [4]byte{2}
-		closest, err := n.ClosestPrecedingFinger(key)
+		closest, err := n.ClosestPrecedingFinger(ctx, key)
 
 		if err != nil {
 			t.Error(err)
@@ -157,7 +161,7 @@ func TestClosestPrecedingFinger(t *testing.T) {
 
 	t.Run("ft is all one value > key", func(t *testing.T) {
 		key := [4]byte{0}
-		closest, err := n.ClosestPrecedingFinger(key)
+		closest, err := n.ClosestPrecedingFinger(ctx, key)
 
 		if err != nil {
 			t.Error(err)
@@ -170,7 +174,7 @@ func TestClosestPrecedingFinger(t *testing.T) {
 
 	t.Run("ft is all one value == key", func(t *testing.T) {
 		key := [4]byte{1}
-		closest, err := n.ClosestPrecedingFinger(key)
+		closest, err := n.ClosestPrecedingFinger(ctx, key)
 
 		if err != nil {
 			t.Error(err)
@@ -182,13 +186,13 @@ func TestClosestPrecedingFinger(t *testing.T) {
 	})
 
 	t.Run("other vals in ft", func(t *testing.T) {
-		n.fingerTable[0] = newRemoteNodeWithID(newAddr(t), [4]byte{2})
-		n.fingerTable[1] = newRemoteNodeWithID(newAddr(t), [4]byte{4})
-		n.fingerTable[2] = newRemoteNodeWithID(newAddr(t), [4]byte{8})
+		n.fingerTable.Table[0] = newRemoteNodeWithID(newAddr(t), [4]byte{2})
+		n.fingerTable.Table[1] = newRemoteNodeWithID(newAddr(t), [4]byte{4})
+		n.fingerTable.Table[2] = newRemoteNodeWithID(newAddr(t), [4]byte{8})
 
 		key := [4]byte{5}
 
-		closest, err := n.ClosestPrecedingFinger(key)
+		closest, err := n.ClosestPrecedingFinger(ctx, key)
 
 		if err != nil {
 			t.Error(err)
@@ -209,7 +213,7 @@ func TestFindPredecessor(t *testing.T) {
 		key := [4]byte{0}
 		nRemote := n.toRemoteNode()
 		n.fingerTable = newFingerTable(nRemote)
-		pred, err := n.FindPredecessor(key)
+		pred, err := n.FindPredecessor(ctx, key)
 
 		if err != nil {
 			t.Error(err)
@@ -236,7 +240,7 @@ func TestFindPredecessor(t *testing.T) {
 
 		key := [4]byte{3}
 
-		p, err := n1.FindPredecessor(key)
+		p, err := n1.FindPredecessor(ctx, key)
 
 		if err != nil {
 			t.Error(err)
@@ -268,7 +272,7 @@ func TestFindPredecessor(t *testing.T) {
 
 		key := [4]byte{0}
 
-		p, err := n1.FindPredecessor(key)
+		p, err := n1.FindPredecessor(ctx, key)
 
 		if err != nil {
 			t.Error(err)
@@ -278,5 +282,4 @@ func TestFindPredecessor(t *testing.T) {
 			t.Errorf("expected predecessor to be % x, got % x", n1.GetID(), p.GetID())
 		}
 	})
-
 }

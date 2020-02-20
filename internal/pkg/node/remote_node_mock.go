@@ -1,6 +1,8 @@
 package node
 
 import (
+	"context"
+
 	"github.com/msmedes/scale/internal/pkg/scale"
 )
 
@@ -28,22 +30,22 @@ func (m *RemoteNodeMock) GetAddr() string {
 }
 
 //FindPredecessor finds the predecessor to the id
-func (m *RemoteNodeMock) FindPredecessor(scale.Key) (scale.RemoteNode, error) {
+func (m *RemoteNodeMock) FindPredecessor(context.Context, scale.Key) (scale.RemoteNode, error) {
 	return m.findPredecessorResponse, nil
 }
 
 //FindSuccessor finds the predecessor to the id
-func (m *RemoteNodeMock) FindSuccessor(scale.Key) (scale.RemoteNode, error) {
+func (m *RemoteNodeMock) FindSuccessor(context.Context, scale.Key) (scale.RemoteNode, error) {
 	return m.findSuccessorResponse, nil
 }
 
 //GetPredecessor finds the predecessor to the id
-func (m *RemoteNodeMock) GetPredecessor() (scale.RemoteNode, error) {
+func (m *RemoteNodeMock) GetPredecessor(context.Context) (scale.RemoteNode, error) {
 	return m.getPredecessorResponse, nil
 }
 
 //GetSuccessor finds the predecessor to the id
-func (m *RemoteNodeMock) GetSuccessor() (scale.RemoteNode, error) {
+func (m *RemoteNodeMock) GetSuccessor(context.Context) (scale.RemoteNode, error) {
 	return m.getSuccessorResponse, nil
 }
 
@@ -53,6 +55,6 @@ func (m *RemoteNodeMock) Notify(scale.Node) error {
 }
 
 //ClosestPrecedingFinger finds the predecessor to the id
-func (m *RemoteNodeMock) ClosestPrecedingFinger(scale.Key) (scale.RemoteNode, error) {
+func (m *RemoteNodeMock) ClosestPrecedingFinger(context.Context, scale.Key) (scale.RemoteNode, error) {
 	return m.closestPrecedingFingerResponse, nil
 }

@@ -69,9 +69,9 @@ func (r *RemoteNode) GetAddr() string {
 }
 
 // FindPredecessor proxy for RPC call
-func (r *RemoteNode) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
+func (r *RemoteNode) FindPredecessor(ctx context.Context, key scale.Key) (scale.RemoteNode, error) {
 	predecessor, err := r.RPC.FindPredecessor(
-		context.Background(),
+		ctx,
 		&pb.RemoteQuery{Id: key[:]},
 	)
 
@@ -83,8 +83,8 @@ func (r *RemoteNode) FindPredecessor(key scale.Key) (scale.RemoteNode, error) {
 }
 
 // FindSuccessor proxy
-func (r *RemoteNode) FindSuccessor(key scale.Key) (scale.RemoteNode, error) {
-	p, err := r.RPC.FindSuccessor(context.Background(), &pb.RemoteQuery{Id: key[:]})
+func (r *RemoteNode) FindSuccessor(ctx context.Context, key scale.Key) (scale.RemoteNode, error) {
+	p, err := r.RPC.FindSuccessor(ctx, &pb.RemoteQuery{Id: key[:]})
 
 	if err != nil {
 		return nil, err
@@ -144,8 +144,8 @@ func (r *RemoteNode) Notify(node scale.Node) error {
 }
 
 //GetSuccessor proxy
-func (r *RemoteNode) GetSuccessor() (scale.RemoteNode, error) {
-	successor, err := r.RPC.GetSuccessor(context.Background(), &pb.Empty{})
+func (r *RemoteNode) GetSuccessor(ctx context.Context) (scale.RemoteNode, error) {
+	successor, err := r.RPC.GetSuccessor(ctx, &pb.Empty{})
 
 	if err != nil {
 		return nil, err
@@ -155,8 +155,8 @@ func (r *RemoteNode) GetSuccessor() (scale.RemoteNode, error) {
 }
 
 //GetPredecessor proxy
-func (r *RemoteNode) GetPredecessor() (scale.RemoteNode, error) {
-	predecessor, err := r.RPC.GetPredecessor(context.Background(), &pb.Empty{})
+func (r *RemoteNode) GetPredecessor(ctx context.Context) (scale.RemoteNode, error) {
+	predecessor, err := r.RPC.GetPredecessor(ctx, &pb.Empty{})
 
 	if err != nil {
 		return nil, err
@@ -173,9 +173,9 @@ func (r *RemoteNode) Ping() error {
 }
 
 //GetLocal proxy
-func (r *RemoteNode) GetLocal(key scale.Key) ([]byte, error) {
+func (r *RemoteNode) GetLocal(ctx context.Context, key scale.Key) ([]byte, error) {
 	val, err := r.RPC.GetLocal(
-		context.Background(),
+		ctx,
 		&pb.GetRequest{Key: key[:]},
 	)
 
@@ -187,9 +187,9 @@ func (r *RemoteNode) GetLocal(key scale.Key) ([]byte, error) {
 }
 
 //SetLocal proxy
-func (r *RemoteNode) SetLocal(key scale.Key, val []byte) error {
+func (r *RemoteNode) SetLocal(ctx context.Context, key scale.Key, val []byte) error {
 	_, err := r.RPC.SetLocal(
-		context.Background(),
+		ctx,
 		&pb.SetRequest{Key: key[:], Value: val},
 	)
 
@@ -197,8 +197,8 @@ func (r *RemoteNode) SetLocal(key scale.Key, val []byte) error {
 }
 
 //ClosestPrecedingFinger proxy
-func (r *RemoteNode) ClosestPrecedingFinger(id scale.Key) (scale.RemoteNode, error) {
-	res, err := r.RPC.ClosestPrecedingFinger(context.Background(), &pb.RemoteQuery{Id: id[:]})
+func (r *RemoteNode) ClosestPrecedingFinger(ctx context.Context, id scale.Key) (scale.RemoteNode, error) {
+	res, err := r.RPC.ClosestPrecedingFinger(ctx, &pb.RemoteQuery{Id: id[:]})
 
 	if err != nil {
 		return nil, err
@@ -227,13 +227,22 @@ func (r *RemoteNode) SetSuccessor(addr string, clientAddr string) error {
 	return err
 }
 
+// GetNetwork proxy
+func (r *RemoteNode) GetNetwork(nodes []string) ([]string, error) {
+	network, err := r.RPC.GetNetwork(context.Background(), &pb.NetworkMessage{
+		Nodes: nodes,
+	})
+
+	return network.Nodes, err
+}
+
 func clearRemotes() {
 	remotes.mutex.Lock()
 	defer remotes.mutex.Unlock()
 
 	for k := range remotes.data {
 		remote := remotes.data[k]
-		remotes.sugar.Infof("Closing connection to %v", remote.GetAddr())
+
 		err := remote.CloseConnection()
 		if err != nil {
 			remotes.sugar.Error(err)

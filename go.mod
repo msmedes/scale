@@ -27,4 +27,5 @@ require (
 	google.golang.org/appengine v1.4.0
 	google.golang.org/grpc v1.19.0
 	gopkg.in/yaml.v2 v2.2.4 // indirect
+	honnef.co/go/tools v0.0.1-2019.2.3 // indirect
 )
