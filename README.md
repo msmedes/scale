@@ -6,25 +6,10 @@ Go implementation of Chord - DHT protocol
 
 ### Local Development
 
-#### Setup
-
-Have Go installed, all that stuff
-
-BloomRPC is helpful to test RPC calls
-
-```bash
-brew cask install bloomrpc
-```
-
 #### Workflow
-
-- `make` - run linting and tests
-- `make serve` - start grpc server
-- `make serve.silent` if you don't want to watch 1 billion RPC calls zoom by
-- `make trace` - start the trace server (defaults to port 5000)
-- `PORT=<port number> JOIN=<node to join ip> WEB=<port number> make serve`
-- `make trace.codegen` - generate protobuf code for the trace server
-- `make scale.codegen` - generate protobuf code for the scale server
+`make trace` - start the trace server (defaults to port 5000)
+`make serve` - start the first node (defaults to port 3000)
+`PORT=<port number> JOIN=<node to join ip> WEB=<port number> make serve` - for subsequent nodes.  This could be automated but is a bit tricky with the bootstrapping process in the nodes.
 
 Internode communication is on port 3000 by default. GraphQL API is on port 8000 by default.
 Useful GraphQL queries:
