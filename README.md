@@ -7,9 +7,9 @@ Go implementation of Chord - DHT protocol
 ### Local Development
 
 #### Workflow
-`make trace` - start the trace server (defaults to port 5000)
-`make serve` - start the first node (defaults to port 3000)
-`PORT=<port number> JOIN=<node to join ip> WEB=<port number> make serve` - for subsequent nodes.  This could be automated but is a bit tricky with the bootstrapping process in the nodes.
+- `make trace` - start the trace server (defaults to port 5000
+- `make serve` - start the first node (defaults to port 3000
+- `PORT=<port number> JOIN=<node to join ip> WEB=<port number> make serve` - for subsequent nodes.  This could be automated but is a bit tricky with the bootstrapping process in the nodes.
 
 Internode communication is on port 3000 by default. GraphQL API is on port 8000 by default.
 Useful GraphQL queries:
