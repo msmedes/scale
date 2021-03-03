@@ -1,6 +1,6 @@
 module github.com/msmedes/scale
 
-go 1.13.3
+go 1.15
 
 require (
 	github.com/cosiner/argv v0.0.1 // indirect
